@@ -405,8 +405,11 @@ g("f-pdf").addEventListener("change",async function(e){
     for(var p=1;p<=pdf.numPages;p++){
       var page=await pdf.getPage(p);var content=await page.getTextContent();
       var byY={};
-      content.items.forEach(function(item){var y=Math.round(item.transform[5]);if(!byY[y])byY[y]="";byY[y]+=item.str+" ";});
-      Object.keys(byY).sort(function(a,b){return b-a;}).forEach(function(y){lignes.push(byY[y].trim());});
+      content.items.forEach(function(item){var y=Math.round(item.transform[5]);var x=item.transform[4];if(!byY[y])byY[y]=[];byY[y].push({x:x,str:item.str});});
+      Object.keys(byY).sort(function(a,b){return b-a;}).forEach(function(y){
+        var its=byY[y].slice().sort(function(a,b){return a.x-b.x;});
+        lignes.push(its.map(function(it){return it.str;}).join(" ").trim());
+      });
     }
     var txt=lignes.join("\n");
     function getMt(regex){var m=txt.match(regex);if(!m)return 0;var s=(m[1]||m[2]||"").replace(/ /g,"").replace(",",".");return parseFloat(s)||0;}
@@ -431,13 +434,19 @@ g("f-pdf").addEventListener("change",async function(e){
       if(!m) return 0;
       return parseFloat(m[1].replace(/ /g,'').replace(',','.')) || 0;
     }
+    function getMtColon(label) {
+      var re=new RegExp(label+"\\s*:\\s*([0-9][0-9\\s]{0,8},[0-9]{2})\\s*€");
+      var m=txt.match(re);
+      if(!m) return 0;
+      return parseFloat(m[1].replace(/\s/g,'').replace(',','.')) || 0;
+    }
     var sousTotal = getMtApres("Sous-Total");
     var pose      = getMtAvant("FORFAIT POSE");
     var dech      = getMtAvant("DECHETTERIE");
     var livr      = getMtAvant("LIVRAISON");
-    var totalHT   = getMtApres("Total HT");
-    var totalTTC  = getMtApres("Total TTC");
-    var acompte   = getMtApres("Acompte");
+    var totalHT   = getMtColon("Total HT");
+    var totalTTC  = getMtColon("Total TTC");
+    var acompte   = getMtColon("Acompte demand[ée]");
 
     // CP + Ville — chercher 5 chiffres suivi de majuscules, pas l'adresse MMM
     var cpVille = "";
