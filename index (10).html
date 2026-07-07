@@ -153,7 +153,7 @@ body{display:flex;align-items:center;justify-content:center}
 </div>
 
 <div class="page" id="p-fiche">
-<div class="topbar"><span class="tb-back" id="btn-back-fiche">←</span><span class="tb-title" id="fiche-titre">Nouveau chantier</span><span class="tb-icon" id="btn-save">💾</span></div>
+<div class="topbar"><span class="tb-back" id="btn-back-fiche">←</span><span class="tb-title" id="fiche-titre">Nouveau chantier</span><span class="tb-icon" id="btn-delete" style="display:none">🗑️</span><span class="tb-icon" id="btn-save">💾</span></div>
 <div class="con">
   <p class="sec">Client</p>
   <div class="field"><label>Nom client</label><input class="fi" id="fc-client" type="text" placeholder="Nom du client"></div>
@@ -231,7 +231,7 @@ body{display:flex;align-items:center;justify-content:center}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const app = initializeApp({apiKey:"AIzaSyCibRjbNb5nYPADqFsgRcLJ_flaV9Ldors",authDomain:"mmm-chantiers.firebaseapp.com",projectId:"mmm-chantiers",storageBucket:"mmm-chantiers.firebasestorage.app",messagingSenderId:"625594778682",appId:"1:625594778682:web:89669fc9ad978a220fe103"});
@@ -288,7 +288,7 @@ g("nb2-acc").addEventListener("click",function(){show("p-dash");});
 g("nb-plus").addEventListener("click",function(){show("p-plus");});
 g("btn-back-new").addEventListener("click",function(){show("p-dash");});
 g("btn-back-fiche").addEventListener("click",function(){show("p-dash");});
-g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);show("p-fiche");});
+g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);g("btn-delete").style.display="none";show("p-fiche");});
 
 function chargerDash(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -328,6 +328,7 @@ async function ouvrirFiche(id){
     g("fc-pose").value=c.typesPose||"";g("fc-spec").value=c.specificites||"";g("fc-cons").value=c.consignes||"";
     g("fc-march").value=c.montantMarchandiseHT||"";g("fc-pose-ht").value=c.montantPoseHT||"";g("fc-divers").value=c.montantDiversHT||"";
     renderEq(c.equipe||[]);renderTaches(c.taches||[]);
+    g("btn-delete").style.display="block";
     show("p-fiche");
   } catch(e){toast("Erreur: "+e.message,"e");}
 }
@@ -378,6 +379,18 @@ async function sauvegarder(){
 }
 g("btn-save").addEventListener("click",sauvegarder);
 g("btn-save2").addEventListener("click",sauvegarder);
+
+g("btn-delete").addEventListener("click",async function(){
+  if(!currentId)return;
+  var nom=g("fc-client").value||"ce chantier";
+  if(!confirm("Supprimer definitivement \""+nom+"\" ? Cette action est irreversible.")) return;
+  try{
+    await deleteDoc(doc(db,"chantiers",currentId));
+    toast("Chantier supprime","s");
+    currentId=null;
+    show("p-dash");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+});
 
 g("f-pdf").addEventListener("change",async function(e){
   var fichier=e.target.files[0];if(!fichier)return;
@@ -493,6 +506,7 @@ g("f-pdf").addEventListener("change",async function(e){
 
 g("btn-val-import").addEventListener("click",function(){
   currentId=null;
+  g("btn-delete").style.display="none";
   g("fiche-titre").textContent=g("if-client").value||"Nouveau chantier";
   g("fc-client").value=g("if-client").value;g("fc-tel").value=g("if-tel").value;
   g("fc-adresse").value=g("if-adresse").value;g("fc-ville").value=g("if-ville").value;
