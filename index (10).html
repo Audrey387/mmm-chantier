@@ -215,16 +215,47 @@ body{display:flex;align-items:center;justify-content:center}
 </div>
 
 <div class="page" id="p-atelier">
-<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Atelier - Nicolas</span></div>
-<div class="con"><div class="empty"><div class="ei">🔨</div><div class="et">Vue atelier</div><div class="es">En cours de dev</div></div></div>
+<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Atelier - <span id="atelier-nom">Nicolas</span></span></div>
+<div class="con">
+  <p class="sec">Chantiers</p>
+  <div id="liste-atelier"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
+</div>
 <div style="padding:14px"><button class="bts" id="btn-logout-nic">Se deconnecter</button></div>
 </div>
 
 <div class="page" id="p-equipe">
-<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Equipe terrain</span></div>
-<div class="con"><div class="empty"><div class="ei">👷</div><div class="et">Vue equipe</div><div class="es">En cours de dev</div></div></div>
+<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Bonjour <span id="equipe-nom">Equipe</span></span></div>
+<div class="con">
+  <p class="sec">Chantiers</p>
+  <div id="liste-equipe"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
+</div>
 <div style="padding:14px"><button class="bts" id="btn-logout-eq">Se deconnecter</button></div>
 </div>
+
+<div class="page" id="p-team-view">
+<div class="topbar"><span class="tb-back" id="btn-back-team">←</span><span class="tb-title" id="team-titre">Chantier</span></div>
+<div class="con">
+  <div class="card">
+    <div class="card-row"><span class="card-title" id="team-client">-</span></div>
+    <div class="card-sub" id="team-adresse">-</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <a class="call-btn" id="team-tel-link" href="#">📞 Appeler</a>
+      <a class="gps-btn" id="team-gps-link" href="#" target="_blank">📍 Itineraire</a>
+    </div>
+  </div>
+  <div id="team-spec-wrap" style="display:none">
+    <p class="sec">Specificites chantier</p>
+    <div class="card" style="background:var(--la);border-color:#fac775;color:var(--am);font-size:12px" id="team-spec"></div>
+  </div>
+  <div id="team-cons-wrap" style="display:none">
+    <p class="sec">Consignes terrain</p>
+    <div class="card" style="background:var(--lr);border-color:#f5c6c6;color:var(--rd);font-size:12px" id="team-cons"></div>
+  </div>
+  <p class="sec">Travaux a realiser</p>
+  <div id="team-taches"></div>
+</div>
+</div>
+
 
 </div>
 <div class="toast" id="toast"></div>
@@ -263,8 +294,8 @@ g("btn-login").addEventListener("click", async function(){
     currentUser=Object.assign({login:login},u);
     localStorage.setItem("mmm_user",JSON.stringify(currentUser));
     if(u.role==="admin"){g("dash-nom").textContent=u.prenom;chargerDash();show("p-dash");}
-    else if(u.role==="atelier"){show("p-atelier");}
-    else{show("p-equipe");}
+    else if(u.role==="atelier"){g("atelier-nom").textContent=u.prenom;chargerListeTeam("liste-atelier");show("p-atelier");}
+    else{g("equipe-nom").textContent=u.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
     toast("Connecte - "+u.prenom,"s");
   } catch(e){
     err.textContent=e.message;err.style.display="block";
@@ -275,7 +306,7 @@ g("btn-login").addEventListener("click", async function(){
 
 g("i-pin").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 
-function deco(){if(unsub)unsub();signOut(auth);currentUser=null;localStorage.removeItem("mmm_user");g("i-login").value="";g("i-pin").value="";show("p-login");}
+function deco(){if(unsub)unsub();if(teamUnsub){teamUnsub();teamUnsub=null;}signOut(auth);currentUser=null;localStorage.removeItem("mmm_user");g("i-login").value="";g("i-pin").value="";show("p-login");}
 g("btn-logout").addEventListener("click",deco);
 g("btn-logout-nic").addEventListener("click",deco);
 g("btn-logout-eq").addEventListener("click",deco);
@@ -390,6 +421,75 @@ g("btn-delete").addEventListener("click",async function(){
     currentId=null;
     show("p-dash");
   }catch(e){toast("Erreur: "+e.message,"e");}
+});
+
+var teamUnsub=null, teamCurrentId=null;
+function chargerListeTeam(containerId){
+  if(teamUnsub){teamUnsub();teamUnsub=null;}
+  var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
+  teamUnsub=onSnapshot(q,function(snap){
+    var ch=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}).filter(function(c){return c.statut!=="termine";});
+    var el=g(containerId);
+    if(ch.length===0){el.innerHTML='<div class="empty"><div class="ei">🏗️</div><div class="et">Aucun chantier</div><div class="es">Rien a afficher pour le moment</div></div>';return;}
+    el.innerHTML="";
+    ch.forEach(function(c){
+      var pct=Math.round(((c.etape||1)/12)*100);
+      var s=c.statut||"planifie";
+      var bcl=s==="en_cours"?"bg":"bb";
+      var btx=s==="en_cours"?"En cours":"Planifie";
+      var bl=s==="en_cours"?"var(--gn)":"var(--bl)";
+      var div=document.createElement("div");
+      div.className="card";div.style.cssText="border-left:4px solid "+bl+";cursor:pointer";
+      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+'/12</div><div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
+      div.addEventListener("click",function(){ouvrirVueTeam(c.id);});
+      el.appendChild(div);
+    });
+  });
+}
+
+async function ouvrirVueTeam(id){
+  try{
+    var snap=await getDoc(doc(db,"chantiers",id));
+    if(!snap.exists()){toast("Introuvable","e");return;}
+    var c=Object.assign({id:snap.id},snap.data());
+    teamCurrentId=id;
+    g("team-titre").textContent=c.client||"Chantier";
+    g("team-client").textContent=c.client||"Chantier";
+    var adr=(c.adresse||"")+" - "+(c.ville||"");
+    g("team-adresse").textContent=adr;
+    g("team-tel-link").href=c.telephone?("tel:"+c.telephone):"#";
+    g("team-gps-link").href=c.adresse?("https://maps.google.com/?q="+encodeURIComponent(adr)):"#";
+    if(c.specificites){g("team-spec-wrap").style.display="block";g("team-spec").textContent=c.specificites;}
+    else{g("team-spec-wrap").style.display="none";}
+    if(c.consignes){g("team-cons-wrap").style.display="block";g("team-cons").textContent=c.consignes;}
+    else{g("team-cons-wrap").style.display="none";}
+    renderTachesTeam(c.taches||[]);
+    show("p-team-view");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+}
+
+function renderTachesTeam(taches){
+  var el=g("team-taches");
+  if(!taches||taches.length===0){el.innerHTML='<div class="empty"><div class="es">Aucun travaux liste</div></div>';return;}
+  el.innerHTML="";
+  taches.forEach(function(t,i){
+    var div=document.createElement("div");div.className="ck2";
+    var chk=document.createElement("div");chk.className="chk"+(t.fait?" ok":"");chk.textContent=t.fait?"✓":"";
+    var span=document.createElement("span");span.textContent=t.libelle;
+    div.appendChild(chk);div.appendChild(span);
+    div.addEventListener("click",async function(){
+      var nf=!chk.classList.contains("ok");
+      chk.classList.toggle("ok");chk.textContent=nf?"✓":"";
+      taches[i].fait=nf;
+      try{await updateDoc(doc(db,"chantiers",teamCurrentId),{taches:taches});}
+      catch(e){toast("Erreur sauvegarde: "+e.message,"e");chk.classList.toggle("ok");chk.textContent=nf?"":"✓";taches[i].fait=!nf;}
+    });
+    el.appendChild(div);
+  });
+}
+g("btn-back-team").addEventListener("click",function(){
+  if(currentUser&&currentUser.role==="atelier")show("p-atelier");
+  else show("p-equipe");
 });
 
 g("f-pdf").addEventListener("change",async function(e){
@@ -532,8 +632,8 @@ onAuthStateChanged(auth,function(user){
     if(saved){
       currentUser=JSON.parse(saved);
       if(currentUser.role==="admin"){g("dash-nom").textContent=currentUser.prenom;chargerDash();show("p-dash");}
-      else if(currentUser.role==="atelier"){show("p-atelier");}
-      else{show("p-equipe");}
+      else if(currentUser.role==="atelier"){g("atelier-nom").textContent=currentUser.prenom;chargerListeTeam("liste-atelier");show("p-atelier");}
+      else{g("equipe-nom").textContent=currentUser.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
     }
   }
 });
