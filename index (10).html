@@ -428,8 +428,7 @@ g("f-pdf").addEventListener("change",async function(e){
 
     // CP + Ville — chercher 5 chiffres suivi de majuscules, pas l'adresse MMM
     var cpVille = "";
-    var cpMatches = txt.match(/(\d{5})\s+([A-Z][A-Z\s]{2,20}?)(?:\s*
-|\s*Page|\s*M[aA])/g);
+    var cpMatches = txt.match(/(\d{5})\s+([A-Z][A-Z\s]{2,20}?)(?:\s*\n|\s*Page|\s*M[aA])/g);
     if(cpMatches) {
       // Prendre le premier qui n'est pas LE VERSOUD (adresse MMM)
       for(var ci=0;ci<cpMatches.length;ci++) {
