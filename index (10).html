@@ -186,6 +186,11 @@ body{display:flex;align-items:center;justify-content:center}
   <p class="sec">Consignes terrain</p>
   <textarea class="fi" id="fc-cons" style="min-height:60px;background:var(--lr);border-color:#f5c6c6;color:var(--rd)" placeholder="Acces, badges..."></textarea>
   <div class="div"></div>
+  <div class="div"></div>
+  <p class="sec">Livraisons attendues (fournisseurs / ARC)</p>
+  <div id="fc-livraisons"></div>
+  <button class="bts" id="btn-add-livraison" style="margin-top:0;margin-bottom:10px">+ Ajouter une livraison</button>
+  <div class="div"></div>
   <p class="sec">Travaux a realiser</p>
   <div id="fc-taches"><textarea class="fi" id="fc-taches-libre" style="min-height:80px" placeholder="Saisir les travaux..."></textarea></div>
   <div class="div"></div>
@@ -251,6 +256,14 @@ body{display:flex;align-items:center;justify-content:center}
     <p class="sec">Consignes terrain</p>
     <div class="card" style="background:var(--lr);border-color:#f5c6c6;color:var(--rd);font-size:12px" id="team-cons"></div>
   </div>
+  <div id="team-prep-wrap" style="display:none">
+    <p class="sec">Statut atelier</p>
+    <div class="card" id="team-prep-banner" style="cursor:default"></div>
+  </div>
+  <div id="team-livr-wrap" style="display:none">
+    <p class="sec">Reception marchandise</p>
+    <div id="team-livraisons"></div>
+  </div>
   <p class="sec">Travaux a realiser</p>
   <div id="team-taches"></div>
 </div>
@@ -306,6 +319,8 @@ g("btn-login").addEventListener("click", async function(){
 
 g("i-pin").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 
+var teamUnsub=null, teamCurrentId=null;
+
 function deco(){if(unsub)unsub();if(teamUnsub){teamUnsub();teamUnsub=null;}signOut(auth);currentUser=null;localStorage.removeItem("mmm_user");g("i-login").value="";g("i-pin").value="";show("p-login");}
 g("btn-logout").addEventListener("click",deco);
 g("btn-logout-nic").addEventListener("click",deco);
@@ -319,7 +334,7 @@ g("nb2-acc").addEventListener("click",function(){show("p-dash");});
 g("nb-plus").addEventListener("click",function(){show("p-plus");});
 g("btn-back-new").addEventListener("click",function(){show("p-dash");});
 g("btn-back-fiche").addEventListener("click",function(){show("p-dash");});
-g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);g("btn-delete").style.display="none";show("p-fiche");});
+g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);g("btn-delete").style.display="none";show("p-fiche");});
 
 function chargerDash(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -358,7 +373,7 @@ async function ouvrirFiche(id){
     g("fc-debut").value=c.dateDebut?c.dateDebut.split("T")[0]:"";g("fc-fin").value=c.dateFin?c.dateFin.split("T")[0]:"";
     g("fc-pose").value=c.typesPose||"";g("fc-spec").value=c.specificites||"";g("fc-cons").value=c.consignes||"";
     g("fc-march").value=c.montantMarchandiseHT||"";g("fc-pose-ht").value=c.montantPoseHT||"";g("fc-divers").value=c.montantDiversHT||"";
-    renderEq(c.equipe||[]);renderTaches(c.taches||[]);
+    renderEq(c.equipe||[]);renderTaches(c.taches||[]);renderLivraisons(c.livraisons||[]);
     g("btn-delete").style.display="block";
     show("p-fiche");
   } catch(e){toast("Erreur: "+e.message,"e");}
@@ -389,6 +404,41 @@ function renderTaches(taches){
   });
 }
 
+function renderLivraisons(livraisons){
+  var el=g("fc-livraisons");el.innerHTML="";
+  if(!livraisons||livraisons.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Aucune livraison ajoutee</div>';return;}
+  livraisons.forEach(function(lv){
+    var row=document.createElement("div");
+    row.className="card";row.dataset.statut=lv.statut||"attendu";row.dataset.dateRec=lv.dateReception||"";
+    var badgeCl=lv.statut==="recu"?"bg":lv.statut==="manquant"?"br2":"bgr";
+    var badgeTxt=lv.statut==="recu"?"Recu":lv.statut==="manquant"?"Manquant":"Attendu";
+    row.innerHTML='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+      +'<input class="fi lv-four" style="flex:1" placeholder="Fournisseur" value="'+(lv.fournisseur||"").replace(/"/g,"&quot;")+'">'
+      +'<span class="bdg '+badgeCl+'" style="white-space:nowrap">'+badgeTxt+'</span>'
+      +'<span class="tb-icon lv-del" style="color:var(--rd);cursor:pointer">✕</span></div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<input class="fi lv-ref" style="flex:1" placeholder="Reference ARC" value="'+(lv.ref||"").replace(/"/g,"&quot;")+'">'
+      +'<input class="fi lv-date" type="date" style="flex:1" value="'+(lv.datePrevue||"")+'"></div>';
+    row.querySelector(".lv-del").addEventListener("click",function(){row.remove();});
+    el.appendChild(row);
+  });
+}
+g("btn-add-livraison").addEventListener("click",function(){
+  var el=g("fc-livraisons");
+  if(el.children.length===1&&el.children[0].tagName==="DIV"&&!el.children[0].classList.contains("card")){el.innerHTML="";}
+  var row=document.createElement("div");
+  row.className="card";row.dataset.statut="attendu";row.dataset.dateRec="";
+  row.innerHTML='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+    +'<input class="fi lv-four" style="flex:1" placeholder="Fournisseur">'
+    +'<span class="bdg bgr" style="white-space:nowrap">Attendu</span>'
+    +'<span class="tb-icon lv-del" style="color:var(--rd);cursor:pointer">✕</span></div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<input class="fi lv-ref" style="flex:1" placeholder="Reference ARC">'
+    +'<input class="fi lv-date" type="date" style="flex:1"></div>';
+  row.querySelector(".lv-del").addEventListener("click",function(){row.remove();});
+  el.appendChild(row);
+});
+
 g("btn-add-pers").addEventListener("click",function(){
   var nom=prompt("Prenom:");if(!nom||!nom.trim())return;
   var div=document.createElement("div");div.className="pr sel";
@@ -402,7 +452,14 @@ async function sauvegarder(){
   var tachesRows=g("fc-taches").querySelectorAll(".ck2");
   var taches=[];
   tachesRows.forEach(function(r,i){taches.push({id:"t"+i,libelle:r.querySelector("span").textContent,fait:r.querySelector(".chk").classList.contains("ok")});});
-  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,updatedAt:serverTimestamp()};
+  var livRows=g("fc-livraisons").querySelectorAll(".card");
+  var livraisons=[];
+  livRows.forEach(function(r,i){
+    var four=r.querySelector(".lv-four").value.trim();
+    if(!four)return;
+    livraisons.push({id:"lv"+i,fournisseur:four,ref:r.querySelector(".lv-ref").value.trim(),datePrevue:r.querySelector(".lv-date").value||"",statut:r.dataset.statut||"attendu",dateReception:r.dataset.dateRec||""});
+  });
+  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,updatedAt:serverTimestamp()};
   try {
     if(currentId){await updateDoc(doc(db,"chantiers",currentId),data);toast("Sauvegarde OK","s");}
     else{data.statut="planifie";data.etape=1;data.createdAt=serverTimestamp();var ref=await addDoc(collection(db,"chantiers"),data);currentId=ref.id;toast("Chantier cree!","s");show("p-dash");}
@@ -423,7 +480,6 @@ g("btn-delete").addEventListener("click",async function(){
   }catch(e){toast("Erreur: "+e.message,"e");}
 });
 
-var teamUnsub=null, teamCurrentId=null;
 function chargerListeTeam(containerId){
   if(teamUnsub){teamUnsub();teamUnsub=null;}
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -463,9 +519,61 @@ async function ouvrirVueTeam(id){
     else{g("team-spec-wrap").style.display="none";}
     if(c.consignes){g("team-cons-wrap").style.display="block";g("team-cons").textContent=c.consignes;}
     else{g("team-cons-wrap").style.display="none";}
+    renderPrepAtelier(c);
+    renderLivraisonsTeam(c.livraisons||[]);
     renderTachesTeam(c.taches||[]);
     show("p-team-view");
   }catch(e){toast("Erreur: "+e.message,"e");}
+}
+
+function renderPrepAtelier(c){
+  var wrap=g("team-prep-wrap"), ban=g("team-prep-banner");
+  var isAtelier=currentUser&&currentUser.role==="atelier";
+  var hasLivraisons=c.livraisons&&c.livraisons.length>0;
+  if(!isAtelier&&!c.prepAtelierOk&&!hasLivraisons){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  if(c.prepAtelierOk){
+    ban.style.cssText="background:var(--lg);color:var(--tg);font-size:12px;display:flex;justify-content:space-between;align-items:center";
+    ban.innerHTML='<span>✅ Atelier pret - marchandise et quincaillerie verifiees</span>'+(isAtelier?'<span id="team-prep-toggle" style="cursor:pointer;font-weight:600">Annuler</span>':'');
+  } else {
+    ban.style.cssText="background:var(--la);color:var(--am);font-size:12px;display:flex;justify-content:space-between;align-items:center";
+    ban.innerHTML='<span>⏳ Atelier pas encore pret</span>'+(isAtelier?'<span id="team-prep-toggle" style="cursor:pointer;font-weight:600;text-decoration:underline">Valider tout ✓</span>':'');
+  }
+  if(isAtelier){
+    var btn=g("team-prep-toggle");
+    if(btn) btn.addEventListener("click",async function(){
+      var nv=!c.prepAtelierOk;
+      try{await updateDoc(doc(db,"chantiers",teamCurrentId),{prepAtelierOk:nv,prepAtelierDate:nv?new Date().toISOString():null});c.prepAtelierOk=nv;renderPrepAtelier(c);toast(nv?"Atelier valide":"Statut annule","s");}
+      catch(e){toast("Erreur: "+e.message,"e");}
+    });
+  }
+}
+
+function renderLivraisonsTeam(livraisons){
+  var wrap=g("team-livr-wrap"), el=g("team-livraisons");
+  var isAtelier=currentUser&&currentUser.role==="atelier";
+  if(!livraisons||livraisons.length===0){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  el.innerHTML="";
+  livraisons.forEach(function(lv,i){
+    var badgeCl=lv.statut==="recu"?"bg":lv.statut==="manquant"?"br2":"bgr";
+    var badgeTxt=lv.statut==="recu"?"Recu":lv.statut==="manquant"?"Manquant":"Attendu";
+    var div=document.createElement("div");
+    div.className="card";div.style.cssText=isAtelier?"cursor:pointer":"";
+    div.innerHTML='<div class="card-row"><span class="card-title">'+(lv.fournisseur||"Fournisseur")+'</span><span class="bdg '+badgeCl+'">'+badgeTxt+'</span></div>'
+      +'<div class="card-sub">'+(lv.ref?"Ref: "+lv.ref+" - ":"")+(lv.datePrevue?"Prevu le "+lv.datePrevue:"")+'</div>';
+    if(isAtelier){
+      div.addEventListener("click",async function(){
+        var ordre=["attendu","recu","manquant"];
+        var next=ordre[(ordre.indexOf(lv.statut||"attendu")+1)%ordre.length];
+        var newLiv=livraisons.slice();
+        newLiv[i]=Object.assign({},lv,{statut:next,dateReception:next==="recu"?new Date().toISOString():""});
+        try{await updateDoc(doc(db,"chantiers",teamCurrentId),{livraisons:newLiv});livraisons=newLiv;renderLivraisonsTeam(livraisons);toast("Statut mis a jour","s");}
+        catch(e){toast("Erreur: "+e.message,"e");}
+      });
+    }
+    el.appendChild(div);
+  });
 }
 
 function renderTachesTeam(taches){
@@ -517,7 +625,6 @@ g("f-pdf").addEventListener("change",async function(e){
     var client=get(/((?:Madame|Monsieur|M\.|Mme)\.?\s+[A-Z][^\n]{5,60})/i)||"";
     var tel=get(/Mobile\s*:\s*([\d\.\s]{8,15})/);
     var adresse=get(/(\d+\s+(?:CHEMIN|RUE|AVENUE|BOULEVARD|IMPASSE|ALLEE|PLACE)[^\n]{5,50})/i);
-    var cpVille=get(/(\d{5}\s+[A-Z][A-Z\s]{2,20}?)(?:\s+(?:Votre|Page|D))/);
     var numDev=get(/DEVIS\s+N[°o]\s+([A-Z0-9]+)/i);
     // Extraction montants
     function getMtAvant(kw) {
@@ -552,7 +659,6 @@ g("f-pdf").addEventListener("change",async function(e){
     var cpVille = "";
     var cpMatches = txt.match(/(\d{5})\s+([A-Z][A-Z\s]{2,20}?)(?:\s*\n|\s*Page|\s*M[aA])/g);
     if(cpMatches) {
-      // Prendre le premier qui n'est pas LE VERSOUD (adresse MMM)
       for(var ci=0;ci<cpMatches.length;ci++) {
         if(!cpMatches[ci].toUpperCase().includes("VERSOUD") && !cpMatches[ci].toUpperCase().includes("PRUNEY")) {
           cpVille = cpMatches[ci].trim();
@@ -575,7 +681,6 @@ g("f-pdf").addEventListener("change",async function(e){
       for(var si=0;si<skipList.length;si++){if(ll.toUpperCase().includes(skipList[si].toUpperCase())){doSkip=true;break;}}
       if(doSkip) continue;
       var desig=ll.trim();
-      // Montant sur la ligne precedente
       var mt=0;
       if(ii>0){
         var prev=lignes[ii-1];
@@ -583,7 +688,6 @@ g("f-pdf").addEventListener("change",async function(e){
         if(mts&&mts.length>=2) mt=parseFloat(mts[1].replace('€','').replace(/ /g,'').replace(',','.')) || 0;
         else if(mts&&mts.length===1) mt=parseFloat(mts[0].replace('€','').replace(/ /g,'').replace(',','.')) || 0;
       }
-      // Piece + dims sur la ligne suivante
       var piece="", dims="", qte=1;
       if(ii+1<lignes.length){
         var nxt=lignes[ii+1];
@@ -621,6 +725,7 @@ g("btn-val-import").addEventListener("click",function(){
   g("fc-adresse").value=g("if-adresse").value;g("fc-ville").value=g("if-ville").value;
   g("fc-march").value=g("if-march").value;g("fc-pose-ht").value=g("if-pose").value;g("fc-divers").value=g("if-divers").value;
   renderEq([]);
+  renderLivraisons([]);
   if(importOuvrages.length>0){renderTaches(importOuvrages.map(function(o,i){return {id:"t"+i,libelle:o.designation,fait:false};}));}
   toast("Fiche pre-remplie - verifiez et sauvegardez","s");
   show("p-fiche");
