@@ -188,8 +188,19 @@ body{display:flex;align-items:center;justify-content:center}
   <div class="div"></div>
   <div class="div"></div>
   <p class="sec">Livraisons attendues (fournisseurs / ARC)</p>
+  <label class="uz" id="uz-arc-label" style="padding:12px;margin-bottom:8px">
+    <input type="file" id="f-arc" accept=".pdf" style="display:none">
+    <div style="font-size:20px;margin-bottom:4px">📦</div>
+    <div style="font-size:12px;font-weight:500">Importer un ARC (PDF)</div>
+  </label>
+  <div class="ist" id="arc-status"></div>
   <div id="fc-livraisons"></div>
-  <button class="bts" id="btn-add-livraison" style="margin-top:0;margin-bottom:10px">+ Ajouter une livraison</button>
+  <button class="bts" id="btn-add-livraison" style="margin-top:0;margin-bottom:10px">+ Ajouter une livraison manuellement</button>
+  <div class="div"></div>
+  <div class="div"></div>
+  <p class="sec">Fabrication atelier (points a preparer/verifier par Nicolas)</p>
+  <div id="fc-fab"></div>
+  <button class="bts" id="btn-add-fab" style="margin-top:0;margin-bottom:10px">+ Ajouter un point de fabrication</button>
   <div class="div"></div>
   <p class="sec">Travaux a realiser</p>
   <div id="fc-taches"><textarea class="fi" id="fc-taches-libre" style="min-height:80px" placeholder="Saisir les travaux..."></textarea></div>
@@ -259,6 +270,10 @@ body{display:flex;align-items:center;justify-content:center}
   <div id="team-prep-wrap" style="display:none">
     <p class="sec">Statut atelier</p>
     <div class="card" id="team-prep-banner" style="cursor:default"></div>
+  </div>
+  <div id="team-fab-wrap" style="display:none">
+    <p class="sec">Fabrication atelier</p>
+    <div id="team-fab"></div>
   </div>
   <div id="team-livr-wrap" style="display:none">
     <p class="sec">Reception marchandise</p>
@@ -334,7 +349,7 @@ g("nb2-acc").addEventListener("click",function(){show("p-dash");});
 g("nb-plus").addEventListener("click",function(){show("p-plus");});
 g("btn-back-new").addEventListener("click",function(){show("p-dash");});
 g("btn-back-fiche").addEventListener("click",function(){show("p-dash");});
-g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);g("btn-delete").style.display="none";show("p-fiche");});
+g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);renderFabAtelier([]);g("btn-delete").style.display="none";show("p-fiche");});
 
 function chargerDash(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -373,7 +388,7 @@ async function ouvrirFiche(id){
     g("fc-debut").value=c.dateDebut?c.dateDebut.split("T")[0]:"";g("fc-fin").value=c.dateFin?c.dateFin.split("T")[0]:"";
     g("fc-pose").value=c.typesPose||"";g("fc-spec").value=c.specificites||"";g("fc-cons").value=c.consignes||"";
     g("fc-march").value=c.montantMarchandiseHT||"";g("fc-pose-ht").value=c.montantPoseHT||"";g("fc-divers").value=c.montantDiversHT||"";
-    renderEq(c.equipe||[]);renderTaches(c.taches||[]);renderLivraisons(c.livraisons||[]);
+    renderEq(c.equipe||[]);renderTaches(c.taches||[]);renderLivraisons(c.livraisons||[]);renderFabAtelier(c.fabAtelier||[]);
     g("btn-delete").style.display="block";
     show("p-fiche");
   } catch(e){toast("Erreur: "+e.message,"e");}
@@ -408,35 +423,119 @@ function renderLivraisons(livraisons){
   var el=g("fc-livraisons");el.innerHTML="";
   if(!livraisons||livraisons.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Aucune livraison ajoutee</div>';return;}
   livraisons.forEach(function(lv){
-    var row=document.createElement("div");
-    row.className="card";row.dataset.statut=lv.statut||"attendu";row.dataset.dateRec=lv.dateReception||"";
+    var row=ajouterLivraisonRow(lv);
+    row.dataset.statut=lv.statut||"attendu";row.dataset.dateRec=lv.dateReception||"";
     var badgeCl=lv.statut==="recu"?"bg":lv.statut==="manquant"?"br2":"bgr";
     var badgeTxt=lv.statut==="recu"?"Recu":lv.statut==="manquant"?"Manquant":"Attendu";
-    row.innerHTML='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
-      +'<input class="fi lv-four" style="flex:1" placeholder="Fournisseur" value="'+(lv.fournisseur||"").replace(/"/g,"&quot;")+'">'
-      +'<span class="bdg '+badgeCl+'" style="white-space:nowrap">'+badgeTxt+'</span>'
-      +'<span class="tb-icon lv-del" style="color:var(--rd);cursor:pointer">✕</span></div>'
-      +'<div style="display:flex;gap:6px">'
-      +'<input class="fi lv-ref" style="flex:1" placeholder="Reference ARC" value="'+(lv.ref||"").replace(/"/g,"&quot;")+'">'
-      +'<input class="fi lv-date" type="date" style="flex:1" value="'+(lv.datePrevue||"")+'"></div>';
-    row.querySelector(".lv-del").addEventListener("click",function(){row.remove();});
-    el.appendChild(row);
+    var badge=row.querySelector(".bdg");badge.className="bdg "+badgeCl;badge.textContent=badgeTxt;
   });
 }
-g("btn-add-livraison").addEventListener("click",function(){
+function ajouterLivraisonRow(prefill){
+  prefill=prefill||{};
   var el=g("fc-livraisons");
   if(el.children.length===1&&el.children[0].tagName==="DIV"&&!el.children[0].classList.contains("card")){el.innerHTML="";}
   var row=document.createElement("div");
   row.className="card";row.dataset.statut="attendu";row.dataset.dateRec="";
   row.innerHTML='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
-    +'<input class="fi lv-four" style="flex:1" placeholder="Fournisseur">'
+    +'<input class="fi lv-four" style="flex:1" placeholder="Fournisseur" value="'+(prefill.fournisseur||"").replace(/"/g,"&quot;")+'">'
     +'<span class="bdg bgr" style="white-space:nowrap">Attendu</span>'
     +'<span class="tb-icon lv-del" style="color:var(--rd);cursor:pointer">✕</span></div>'
-    +'<div style="display:flex;gap:6px">'
-    +'<input class="fi lv-ref" style="flex:1" placeholder="Reference ARC">'
-    +'<input class="fi lv-date" type="date" style="flex:1"></div>';
+    +'<div style="display:flex;gap:6px;margin-bottom:6px">'
+    +'<input class="fi lv-ref" style="flex:1" placeholder="Reference ARC" value="'+(prefill.ref||"").replace(/"/g,"&quot;")+'">'
+    +'<input class="fi lv-date" type="text" placeholder="Livraison prevue (date ou semaine)" style="flex:1" value="'+(prefill.datePrevue||"").replace(/"/g,"&quot;")+'"></div>'
+    +'<textarea class="fi lv-detail" style="min-height:50px" placeholder="Detail marchandise (reperes, dimensions...)">'+(prefill.detail||"")+'</textarea>';
   row.querySelector(".lv-del").addEventListener("click",function(){row.remove();});
   el.appendChild(row);
+  return row;
+}
+g("btn-add-livraison").addEventListener("click",function(){ajouterLivraisonRow();});
+
+function renderFabAtelier(items){
+  var el=g("fc-fab");el.innerHTML="";
+  if(!items||items.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Aucun point ajoute</div>';return;}
+  items.forEach(function(it){ajouterFabRow(it);});
+}
+function ajouterFabRow(prefill){
+  prefill=prefill||{};
+  var el=g("fc-fab");
+  if(el.children.length===1&&!el.children[0].classList.contains("field")){el.innerHTML="";}
+  var row=document.createElement("div");
+  row.className="field";row.dataset.fait=prefill.fait?"1":"";
+  row.innerHTML='<div style="display:flex;gap:6px;align-items:center">'
+    +'<input class="fi fab-lib" style="flex:1" placeholder="Ex: verifier teinte lasure, verrouiller quincaillerie..." value="'+(prefill.libelle||"").replace(/"/g,"&quot;")+'">'
+    +'<span class="tb-icon fab-del" style="color:var(--rd);cursor:pointer">✕</span></div>';
+  row.querySelector(".fab-del").addEventListener("click",function(){row.remove();});
+  el.appendChild(row);
+  return row;
+}
+g("btn-add-fab").addEventListener("click",function(){ajouterFabRow();});
+
+g("f-arc").addEventListener("change",async function(e){
+  var fichier=e.target.files[0];if(!fichier)return;
+  var status=g("arc-status");status.style.display="block";status.className="ist load";status.textContent="Lecture de l'ARC...";
+  try {
+    if(!window.pdfjsLib){
+      await new Promise(function(res,rej){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";s.onload=function(){window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";res();};s.onerror=rej;document.head.appendChild(s);});
+    }
+    var buf=await fichier.arrayBuffer();
+    var pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+    var lignes=[];
+    for(var p=1;p<=pdf.numPages;p++){
+      var page=await pdf.getPage(p);var content=await page.getTextContent();
+      var byY={};
+      content.items.forEach(function(item){var y=Math.round(item.transform[5]);var x=item.transform[4];if(!byY[y])byY[y]=[];byY[y].push({x:x,str:item.str});});
+      Object.keys(byY).sort(function(a,b){return b-a;}).forEach(function(y){
+        var its=byY[y].slice().sort(function(a,b){return a.x-b.x;});
+        lignes.push(its.map(function(it){return it.str;}).join(" ").trim());
+      });
+    }
+    var atxt=lignes.join("\n");
+    var fournisseur="";
+    for(var li=0;li<lignes.length;li++){
+      var mSoc=lignes[li].match(/\b(?:SAS|SARL|EURL|SASU|SA)\s+[A-ZÀ-ÖØ-Þ0-9][A-ZÀ-ÖØ-Þa-zà-öø-ÿ0-9&,. ]{2,45}/);
+      if(mSoc){fournisseur=mSoc[0].trim();break;}
+      var mSoc2=lignes[li].match(/([A-ZÀ-Ü][A-Za-zÀ-ÿ]+(?:\s+[A-ZÀ-Ü][A-Za-zÀ-ÿ]*){0,2})\s*,?\s+(?:SAS|SARL|EURL|SASU|SA)\s+au\s+capital/i);
+      if(mSoc2){fournisseur=mSoc2[1].trim();break;}
+    }
+    if(!fournisseur){
+      var blacklistF=["DESIGNATION","UNITAIRE","TOTAL","TVA","QTE","COMMERCIAUX","BON POUR COMMANDE","BON POUR","DATE","SIRET","SIGNATURE","ACCUSE","DEVIS","FACTURE","COMMANDE CLIENT","INTERLOCUTEUR","ADRESSE","RECEPTION","REFERENCE","LIVRAISON","DOSSIER","PAGE","DELAI","N°","VOS REF","NOS REF","CODE CLIENT","SAISISSEUR","TOUTES NOS","EDITE LE","MENUISERIE","PORTE D","CET ETE","EN FONCTION","CORDIALEMENT","COMMENTAIRES","TYPE DE","TEL","ARTICLE"];
+      function stripAccents(s){return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+      for(var li2=0;li2<lignes.length;li2++){
+        var cand=lignes[li2].trim();var up=stripAccents(cand.toUpperCase());
+        if(cand.length<3||cand.length>40) continue;
+        if(blacklistF.some(function(b){return up.indexOf(b)===0;})) continue;
+        if(up.includes("MARMONIER")||up.includes("M.M.M")) continue;
+        fournisseur=cand;break;
+      }
+    }
+    var ref="";
+    var mRef=atxt.match(/COMMANDE\s*:?\s*\n?\s*([A-Z]?\d{5,}\S*)\s+du\s+\d{2}\/\d{2}\/\d{4}/i)
+             ||atxt.match(/\bN°\s*:?\s*([A-Z0-9\-]{5,})/i)
+             ||atxt.match(/R[ée]f[ée]rence\s*:?\s*([A-Za-z0-9\-]{3,40})/i);
+    if(mRef) ref=mRef[1];
+    var datePrevue="";
+    var mDate=atxt.match(/(?:D[ée]part usine|Livraison pr[ée]vue|D[ée]lai(?:\s+de\s+livraison)?|Livraison indicative)[^\n]*?(S(?:emaine)?\.?\s?\d{1,2}|\d{2}\/\d{2}\/\d{4})/i);
+    if(mDate) datePrevue=mDate[1].trim();
+    var dimsM=Array.from(atxt.matchAll(/Haut\s+(\d+)\s*x\s*Larg\s+(\d+)\s+(\d+)\s*Vantaux/gi));
+    var repM=Array.from(atxt.matchAll(/REPERE\s+([A-ZÀ-Ü0-9]+(?:\s+\d+)?)/gi));
+    var detailLines=[];
+    for(var di=0;di<dimsM.length;di++){
+      var rep=repM[di]?repM[di][1]:"";
+      detailLines.push((rep?rep+" - ":"")+"Haut "+dimsM[di][1]+" x Larg "+dimsM[di][2]+" - "+dimsM[di][3]+" vantaux");
+    }
+    if(detailLines.length===0){
+      var artM=Array.from(atxt.matchAll(/\d{3}\s*\/\s*([^\n]+?)\s*Rep[eè]re\s*:\s*([A-Z0-9 ]+)/gi));
+      artM.forEach(function(m){detailLines.push(m[1].trim()+" (Repere "+m[2].trim()+")");});
+    }
+    if(detailLines.length===0){
+      var lgM=Array.from(atxt.matchAll(/Largeur\s*:\s*(\d+)\s*mm\s*,\s*Hauteur\s*:\s*(\d+)\s*mm/gi));
+      lgM.forEach(function(m){detailLines.push("Largeur "+m[1]+"mm x Hauteur "+m[2]+"mm");});
+    }
+    var detail=detailLines.join("\n");
+    ajouterLivraisonRow({fournisseur:fournisseur,ref:ref,datePrevue:datePrevue,detail:detail});
+    status.className="ist ok";status.textContent="ARC lu - verifiez et corrigez si besoin, puis Sauvegardez";
+  } catch(e){status.className="ist err";status.textContent="Erreur: "+e.message;}
+  e.target.value="";
 });
 
 g("btn-add-pers").addEventListener("click",function(){
@@ -457,9 +556,16 @@ async function sauvegarder(){
   livRows.forEach(function(r,i){
     var four=r.querySelector(".lv-four").value.trim();
     if(!four)return;
-    livraisons.push({id:"lv"+i,fournisseur:four,ref:r.querySelector(".lv-ref").value.trim(),datePrevue:r.querySelector(".lv-date").value||"",statut:r.dataset.statut||"attendu",dateReception:r.dataset.dateRec||""});
+    livraisons.push({id:"lv"+i,fournisseur:four,ref:r.querySelector(".lv-ref").value.trim(),datePrevue:r.querySelector(".lv-date").value||"",detail:r.querySelector(".lv-detail").value.trim(),statut:r.dataset.statut||"attendu",dateReception:r.dataset.dateRec||""});
   });
-  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,updatedAt:serverTimestamp()};
+  var fabRows=g("fc-fab").querySelectorAll(".field");
+  var fabAtelier=[];
+  fabRows.forEach(function(r,i){
+    var lib=r.querySelector(".fab-lib").value.trim();
+    if(!lib)return;
+    fabAtelier.push({id:"fab"+i,libelle:lib,fait:r.dataset.fait==="1"});
+  });
+  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,fabAtelier:fabAtelier,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,updatedAt:serverTimestamp()};
   try {
     if(currentId){await updateDoc(doc(db,"chantiers",currentId),data);toast("Sauvegarde OK","s");}
     else{data.statut="planifie";data.etape=1;data.createdAt=serverTimestamp();var ref=await addDoc(collection(db,"chantiers"),data);currentId=ref.id;toast("Chantier cree!","s");show("p-dash");}
@@ -520,6 +626,7 @@ async function ouvrirVueTeam(id){
     if(c.consignes){g("team-cons-wrap").style.display="block";g("team-cons").textContent=c.consignes;}
     else{g("team-cons-wrap").style.display="none";}
     renderPrepAtelier(c);
+    renderFabAtelierTeam(c.fabAtelier||[]);
     renderLivraisonsTeam(c.livraisons||[]);
     renderTachesTeam(c.taches||[]);
     show("p-team-view");
@@ -549,6 +656,28 @@ function renderPrepAtelier(c){
   }
 }
 
+function renderFabAtelierTeam(items){
+  var wrap=g("team-fab-wrap"), el=g("team-fab");
+  var isAtelier=currentUser&&currentUser.role==="atelier";
+  if(!isAtelier||!items||items.length===0){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  el.innerHTML="";
+  items.forEach(function(it,i){
+    var div=document.createElement("div");div.className="ck2";
+    var chk=document.createElement("div");chk.className="chk"+(it.fait?" ok":"");chk.textContent=it.fait?"✓":"";
+    var span=document.createElement("span");span.textContent=it.libelle;
+    div.appendChild(chk);div.appendChild(span);
+    div.addEventListener("click",async function(){
+      var nf=!chk.classList.contains("ok");
+      chk.classList.toggle("ok");chk.textContent=nf?"✓":"";
+      items[i].fait=nf;
+      try{await updateDoc(doc(db,"chantiers",teamCurrentId),{fabAtelier:items});}
+      catch(e){toast("Erreur sauvegarde: "+e.message,"e");chk.classList.toggle("ok");chk.textContent=nf?"":"✓";items[i].fait=!nf;}
+    });
+    el.appendChild(div);
+  });
+}
+
 function renderLivraisonsTeam(livraisons){
   var wrap=g("team-livr-wrap"), el=g("team-livraisons");
   var isAtelier=currentUser&&currentUser.role==="atelier";
@@ -561,7 +690,8 @@ function renderLivraisonsTeam(livraisons){
     var div=document.createElement("div");
     div.className="card";div.style.cssText=isAtelier?"cursor:pointer":"";
     div.innerHTML='<div class="card-row"><span class="card-title">'+(lv.fournisseur||"Fournisseur")+'</span><span class="bdg '+badgeCl+'">'+badgeTxt+'</span></div>'
-      +'<div class="card-sub">'+(lv.ref?"Ref: "+lv.ref+" - ":"")+(lv.datePrevue?"Prevu le "+lv.datePrevue:"")+'</div>';
+      +'<div class="card-sub">'+(lv.ref?"Ref: "+lv.ref+" - ":"")+(lv.datePrevue?"Prevu le "+lv.datePrevue:"")+'</div>'
+      +(lv.detail?'<div style="font-size:11px;color:var(--tx);margin-top:6px;white-space:pre-line;background:var(--su);border-radius:6px;padding:6px 8px">'+lv.detail.replace(/</g,"&lt;")+'</div>':"");
     if(isAtelier){
       div.addEventListener("click",async function(){
         var ordre=["attendu","recu","manquant"];
@@ -726,6 +856,7 @@ g("btn-val-import").addEventListener("click",function(){
   g("fc-march").value=g("if-march").value;g("fc-pose-ht").value=g("if-pose").value;g("fc-divers").value=g("if-divers").value;
   renderEq([]);
   renderLivraisons([]);
+  renderFabAtelier([]);
   if(importOuvrages.length>0){renderTaches(importOuvrages.map(function(o,i){return {id:"t"+i,libelle:o.designation,fait:false};}));}
   toast("Fiche pre-remplie - verifiez et sauvegardez","s");
   show("p-fiche");
