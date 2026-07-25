@@ -99,7 +99,7 @@ body{display:flex;align-items:center;justify-content:center}
 </div>
 
 <div class="page" id="p-dash">
-<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Bonjour <span id="dash-nom">Serena</span></span></div>
+<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Bonjour <span id="dash-nom">Serena</span></span><span class="tb-icon" id="btn-notifs" style="position:relative">🔔<span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--rd);color:#fff;font-size:9px;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:1.3">0</span></span></div>
 <div class="con">
   <div class="sg">
     <div class="st"><div class="sv" id="s-cours">0</div><div class="sl">En cours</div></div>
@@ -231,8 +231,10 @@ body{display:flex;align-items:center;justify-content:center}
 </div>
 
 <div class="page" id="p-atelier">
-<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Atelier - <span id="atelier-nom">Nicolas</span></span></div>
+<div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Atelier - <span id="atelier-nom">Nicolas</span></span><span class="tb-icon" id="btn-notifs-at" style="position:relative">🔔<span id="notif-badge-at" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--rd);color:#fff;font-size:9px;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:1.3">0</span></span></div>
 <div class="con">
+  <p class="sec">SAV planifies</p>
+  <div id="sav-list-atelier" style="margin-bottom:6px"></div>
   <p class="sec">Chantiers</p>
   <div id="liste-atelier"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
 </div>
@@ -242,6 +244,8 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="page" id="p-equipe">
 <div class="topbar"><div class="tb-logo">MMM</div><span class="tb-title">Bonjour <span id="equipe-nom">Equipe</span></span></div>
 <div class="con">
+  <p class="sec">SAV planifies</p>
+  <div id="sav-list-equipe" style="margin-bottom:6px"></div>
   <p class="sec">Chantiers</p>
   <div id="liste-equipe"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
 </div>
@@ -258,6 +262,10 @@ body{display:flex;align-items:center;justify-content:center}
       <a class="call-btn" id="team-tel-link" href="#">📞 Appeler</a>
       <a class="gps-btn" id="team-gps-link" href="#" target="_blank">📍 Itineraire</a>
     </div>
+  </div>
+  <div id="team-typespose-wrap" style="display:none">
+    <p class="sec">Types de pose</p>
+    <div class="card" style="font-size:12px" id="team-typespose"></div>
   </div>
   <div id="team-spec-wrap" style="display:none">
     <p class="sec">Specificites chantier</p>
@@ -281,16 +289,70 @@ body{display:flex;align-items:center;justify-content:center}
   </div>
   <p class="sec">Travaux a realiser</p>
   <div id="team-taches"></div>
+  <div class="div"></div>
+  <p class="sec">Comptes-rendus chantier</p>
+  <div id="team-cr-liste"></div>
+  <button class="bts" id="btn-open-cr" style="margin-top:0;margin-bottom:10px">+ Nouveau compte-rendu</button>
+  <div class="div"></div>
+  <p class="sec">Signaler un manque a Nicolas</p>
+  <textarea class="fi" id="team-manque-txt" style="min-height:60px" placeholder="Quincaillerie, consommables manquants..."></textarea>
+  <button class="bts" id="btn-envoyer-manque" style="margin-top:8px;margin-bottom:10px">Envoyer l'alerte</button>
+  <div class="div"></div>
+  <p class="sec">PV de reception</p>
+  <div id="team-pv-statut" style="display:none" class="card"></div>
+  <button class="bto" id="btn-open-pv">Faire signer le PV</button>
 </div>
 </div>
 
+<div class="page" id="p-cr">
+<div class="topbar"><span class="tb-back" id="btn-back-cr">←</span><span class="tb-title">Compte-rendu du jour</span></div>
+<div class="con">
+  <p class="sec">Travaux effectues aujourd'hui</p>
+  <div id="cr-taches"></div>
+  <p class="sec">Photos (max 2)</p>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <label class="uz" style="flex:1;padding:14px"><input type="file" accept="image/*" capture="environment" id="cr-photo1" style="display:none"><div style="font-size:20px">📷</div><div style="font-size:11px">Photo 1</div></label>
+    <label class="uz" style="flex:1;padding:14px"><input type="file" accept="image/*" capture="environment" id="cr-photo2" style="display:none"><div style="font-size:20px">📷</div><div style="font-size:11px">Photo 2</div></label>
+  </div>
+  <div id="cr-preview" style="display:flex;gap:8px;margin-bottom:10px"></div>
+  <p class="sec">Problemes rencontres (optionnel)</p>
+  <textarea class="fi" id="cr-probleme" style="min-height:70px" placeholder="Rien a signaler..."></textarea>
+  <button class="bto" id="btn-cr-envoyer">Envoyer le compte-rendu</button>
+</div>
+</div>
+
+<div class="page" id="p-pv">
+<div class="topbar"><span class="tb-back" id="btn-back-pv">←</span><span class="tb-title">PV de reception</span></div>
+<div class="con">
+  <div class="field" style="display:flex;align-items:center;gap:9px;cursor:pointer" id="pv-reserve-toggle">
+    <div class="chk" id="pv-reserve-chk"></div><span style="font-size:13px;font-weight:500">Reception avec reserves</span>
+  </div>
+  <div id="pv-reserve-wrap" style="display:none">
+    <textarea class="fi" id="pv-reserve-txt" style="min-height:70px" placeholder="Detail des reserves..."></textarea>
+  </div>
+  <p class="sec">Signature client</p>
+  <canvas id="pv-canvas" style="border:1px solid var(--br);border-radius:8px;background:#fff;width:100%;height:160px;touch-action:none;display:block"></canvas>
+  <button class="bts" id="btn-pv-clear" style="margin-top:8px">Effacer la signature</button>
+  <button class="bto" id="btn-pv-valider">Valider le PV</button>
+</div>
+</div>
+
+<div class="page" id="p-notifs">
+<div class="topbar"><span class="tb-back" id="btn-back-notifs">←</span><span class="tb-title">Notifications</span><span class="tb-icon" id="btn-notifs-clear">Tout lu</span></div>
+<div class="con"><div id="notifs-liste"></div></div>
+</div>
+
+<div class="page" id="p-sav">
+<div class="topbar"><span class="tb-back" id="btn-back-sav">←</span><span class="tb-title">SAV</span></div>
+<div class="con"><div id="sav-liste"></div></div>
+</div>
 
 </div>
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const app = initializeApp({apiKey:"AIzaSyCibRjbNb5nYPADqFsgRcLJ_flaV9Ldors",authDomain:"mmm-chantiers.firebaseapp.com",projectId:"mmm-chantiers",storageBucket:"mmm-chantiers.firebasestorage.app",messagingSenderId:"625594778682",appId:"1:625594778682:web:89669fc9ad978a220fe103"});
@@ -321,8 +383,8 @@ g("btn-login").addEventListener("click", async function(){
     await signInWithEmailAndPassword(auth,u.email,PIN);
     currentUser=Object.assign({login:login},u);
     localStorage.setItem("mmm_user",JSON.stringify(currentUser));
-    if(u.role==="admin"){g("dash-nom").textContent=u.prenom;chargerDash();show("p-dash");}
-    else if(u.role==="atelier"){g("atelier-nom").textContent=u.prenom;chargerListeTeam("liste-atelier");show("p-atelier");}
+    if(u.role==="admin"){g("dash-nom").textContent=u.prenom;chargerDash();badgeUpdate("admin","notif-badge");show("p-dash");}
+    else if(u.role==="atelier"){g("atelier-nom").textContent=u.prenom;chargerListeTeam("liste-atelier");badgeUpdate("atelier","notif-badge-at");show("p-atelier");}
     else{g("equipe-nom").textContent=u.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
     toast("Connecte - "+u.prenom,"s");
   } catch(e){
@@ -334,7 +396,7 @@ g("btn-login").addEventListener("click", async function(){
 
 g("i-pin").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 
-var teamUnsub=null, teamCurrentId=null;
+var teamUnsub=null, teamCurrentId=null, teamCurrentChantier=null, crPhoto1=null, crPhoto2=null, pvDrawing=false, pvHasSignature=false, pvCtx=null;
 
 function deco(){if(unsub)unsub();if(teamUnsub){teamUnsub();teamUnsub=null;}signOut(auth);currentUser=null;localStorage.removeItem("mmm_user");g("i-login").value="";g("i-pin").value="";show("p-login");}
 g("btn-logout").addEventListener("click",deco);
@@ -589,8 +651,24 @@ g("btn-delete").addEventListener("click",async function(){
 function chargerListeTeam(containerId){
   if(teamUnsub){teamUnsub();teamUnsub=null;}
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
+  var savContainerId=containerId.replace("liste-","sav-list-");
   teamUnsub=onSnapshot(q,function(snap){
-    var ch=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}).filter(function(c){return c.statut!=="termine";});
+    var all=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var ch=all.filter(function(c){return c.statut!=="termine";});
+    var savEl=g(savContainerId);
+    if(savEl){
+      var savItems=[];
+      all.forEach(function(c){(c.sav||[]).forEach(function(s){if(s.statut==="planifie")savItems.push({c:c,s:s});});});
+      if(savItems.length===0){savEl.innerHTML="";}
+      else{
+        savEl.innerHTML="";
+        savItems.forEach(function(it){
+          var d=document.createElement("div");d.className="card";d.style.cssText="border-left:4px solid var(--am)";
+          d.innerHTML='<div class="card-row"><span class="card-title">'+(it.c.client||"Chantier")+'</span><span class="bdg ba">'+(it.s.dateIntervention||"")+'</span></div><div class="card-sub">'+(it.c.adresse||"")+" - "+(it.c.ville||"")+'</div><div style="font-size:11px;color:var(--rd);margin-top:4px">'+(it.s.texte||"").replace(/</g,"&lt;")+'</div>';
+          savEl.appendChild(d);
+        });
+      }
+    }
     var el=g(containerId);
     if(ch.length===0){el.innerHTML='<div class="empty"><div class="ei">🏗️</div><div class="et">Aucun chantier</div><div class="es">Rien a afficher pour le moment</div></div>';return;}
     el.innerHTML="";
@@ -615,12 +693,15 @@ async function ouvrirVueTeam(id){
     if(!snap.exists()){toast("Introuvable","e");return;}
     var c=Object.assign({id:snap.id},snap.data());
     teamCurrentId=id;
+    teamCurrentChantier=c;
     g("team-titre").textContent=c.client||"Chantier";
     g("team-client").textContent=c.client||"Chantier";
     var adr=(c.adresse||"")+" - "+(c.ville||"");
     g("team-adresse").textContent=adr;
     g("team-tel-link").href=c.telephone?("tel:"+c.telephone):"#";
     g("team-gps-link").href=c.adresse?("https://maps.google.com/?q="+encodeURIComponent(adr)):"#";
+    if(c.typesPose){g("team-typespose-wrap").style.display="block";g("team-typespose").textContent=c.typesPose;}
+    else{g("team-typespose-wrap").style.display="none";}
     if(c.specificites){g("team-spec-wrap").style.display="block";g("team-spec").textContent=c.specificites;}
     else{g("team-spec-wrap").style.display="none";}
     if(c.consignes){g("team-cons-wrap").style.display="block";g("team-cons").textContent=c.consignes;}
@@ -629,6 +710,8 @@ async function ouvrirVueTeam(id){
     renderFabAtelierTeam(c.fabAtelier||[]);
     renderLivraisonsTeam(c.livraisons||[]);
     renderTachesTeam(c.taches||[]);
+    renderComptesRendus(c.comptesRendus||[]);
+    renderPvStatut(c);
     show("p-team-view");
   }catch(e){toast("Erreur: "+e.message,"e");}
 }
@@ -729,6 +812,279 @@ g("btn-back-team").addEventListener("click",function(){
   if(currentUser&&currentUser.role==="atelier")show("p-atelier");
   else show("p-equipe");
 });
+
+function renderComptesRendus(crs){
+  var el=g("team-cr-liste");
+  if(!crs||crs.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Aucun compte-rendu envoye</div>';return;}
+  el.innerHTML="";
+  crs.slice().reverse().forEach(function(cr){
+    var div=document.createElement("div");div.className="card";
+    var d=cr.date?new Date(cr.date).toLocaleDateString("fr-FR"):"";
+    div.innerHTML='<div class="card-row"><span class="card-title">'+d+' - '+(cr.equipe||"")+'</span>'+(cr.probleme?'<span class="bdg br2">Probleme</span>':'<span class="bdg bg">OK</span>')+'</div>'
+      +'<div class="card-sub">'+(cr.tachesFaites&&cr.tachesFaites.length?cr.tachesFaites.length+" travaux coches":"")+(cr.photos&&cr.photos.length?" - "+cr.photos.length+" photo(s)":"")+'</div>'
+      +(cr.probleme?'<div style="font-size:11px;color:var(--rd);margin-top:6px">'+cr.probleme.replace(/</g,"&lt;")+'</div>':"");
+    el.appendChild(div);
+  });
+}
+
+function renderPvStatut(c){
+  var el=g("team-pv-statut");
+  if(!c.pvReception){el.style.display="none";return;}
+  el.style.display="block";
+  var pv=c.pvReception;
+  var d=pv.signeLe?new Date(pv.signeLe).toLocaleDateString("fr-FR"):"";
+  el.innerHTML='<div class="card-row"><span class="card-title">PV signe le '+d+'</span>'+(pv.avecReserves?'<span class="bdg br2">Avec reserves</span>':'<span class="bdg bg">Sans reserves</span>')+'</div>'
+    +(pv.avecReserves&&pv.reserveTexte?'<div class="card-sub" style="margin-top:4px">'+pv.reserveTexte.replace(/</g,"&lt;")+'</div>':"");
+}
+
+async function creerNotification(type,chantierId,chantierNom,message,target){
+  try{
+    await addDoc(collection(db,"notifications"),{type:type,chantierId:chantierId||null,chantierNom:chantierNom||"",message:message,target:target,createdAt:serverTimestamp(),lu:false});
+  }catch(e){console.error("notif error",e);}
+}
+
+// ---- Compte-rendu chantier ----
+g("btn-open-cr").addEventListener("click",function(){
+  if(!teamCurrentChantier){toast("Ouvrez d'abord un chantier","e");return;}
+  var taches=teamCurrentChantier.taches||[];
+  var el=g("cr-taches");
+  if(taches.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu)">Aucun travaux liste sur ce chantier</div>';}
+  else{
+    el.innerHTML="";
+    taches.forEach(function(t,i){
+      var div=document.createElement("div");div.className="ck2";div.dataset.idx=i;
+      var chk=document.createElement("div");chk.className="chk"+(t.fait?" ok":"");chk.textContent=t.fait?"✓":"";
+      var span=document.createElement("span");span.textContent=t.libelle;
+      div.appendChild(chk);div.appendChild(span);
+      div.addEventListener("click",function(){chk.classList.toggle("ok");chk.textContent=chk.classList.contains("ok")?"✓":"";});
+      el.appendChild(div);
+    });
+  }
+  crPhoto1=null;crPhoto2=null;
+  g("cr-preview").innerHTML="";
+  g("cr-probleme").value="";
+  show("p-cr");
+});
+g("btn-back-cr").addEventListener("click",function(){show("p-team-view");});
+
+function compressPhoto(file,cb){
+  var img=new Image();
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    img.onload=function(){
+      var maxW=900;var scale=Math.min(1,maxW/img.width);
+      var cnv=document.createElement("canvas");
+      cnv.width=img.width*scale;cnv.height=img.height*scale;
+      var ctx=cnv.getContext("2d");
+      ctx.drawImage(img,0,0,cnv.width,cnv.height);
+      cb(cnv.toDataURL("image/jpeg",0.6));
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+g("cr-photo1").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;
+  compressPhoto(f,function(durl){crPhoto1=durl;refreshCrPreview();});
+});
+g("cr-photo2").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;
+  compressPhoto(f,function(durl){crPhoto2=durl;refreshCrPreview();});
+});
+function refreshCrPreview(){
+  var el=g("cr-preview");el.innerHTML="";
+  [crPhoto1,crPhoto2].forEach(function(p){
+    if(!p)return;
+    var img=document.createElement("img");
+    img.src=p;img.style.cssText="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--br)";
+    el.appendChild(img);
+  });
+}
+
+g("btn-cr-envoyer").addEventListener("click",async function(){
+  if(!teamCurrentId){toast("Aucun chantier ouvert","e");return;}
+  var tachesFaitesLibelles=[];
+  var newTaches=(teamCurrentChantier.taches||[]).slice();
+  g("cr-taches").querySelectorAll(".ck2").forEach(function(div){
+    var idx=parseInt(div.dataset.idx);
+    var ok=div.querySelector(".chk").classList.contains("ok");
+    if(ok){tachesFaitesLibelles.push(div.querySelector("span").textContent);}
+    if(newTaches[idx])newTaches[idx].fait=ok;
+  });
+  var probleme=g("cr-probleme").value.trim();
+  var photos=[crPhoto1,crPhoto2].filter(Boolean);
+  var cr={id:"cr"+Date.now(),date:new Date().toISOString(),equipe:currentUser?currentUser.prenom:"",tachesFaites:tachesFaitesLibelles,photos:photos,probleme:probleme};
+  var btn=g("btn-cr-envoyer");btn.disabled=true;btn.textContent="Envoi...";
+  try{
+    await updateDoc(doc(db,"chantiers",teamCurrentId),{comptesRendus:arrayUnion(cr),taches:newTaches});
+    teamCurrentChantier.taches=newTaches;
+    await creerNotification("compte_rendu",teamCurrentId,teamCurrentChantier.client||"",(currentUser?currentUser.prenom:"")+" a envoye un compte-rendu"+(probleme?" (probleme signale)":"")+" - "+(teamCurrentChantier.client||""),"admin");
+    toast("Compte-rendu envoye","s");
+    ouvrirVueTeam(teamCurrentId);
+    show("p-team-view");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+  finally{btn.disabled=false;btn.textContent="Envoyer le compte-rendu";}
+});
+
+// ---- Alerte manque materiel ----
+g("btn-envoyer-manque").addEventListener("click",async function(){
+  if(!teamCurrentId){toast("Aucun chantier ouvert","e");return;}
+  var txt=g("team-manque-txt").value.trim();
+  if(!txt){toast("Precisez ce qui manque","e");return;}
+  var btn=g("btn-envoyer-manque");btn.disabled=true;
+  try{
+    await creerNotification("manque_materiel",teamCurrentId,teamCurrentChantier.client||"",(currentUser?currentUser.prenom:"")+" signale un manque sur "+(teamCurrentChantier.client||"")+" : "+txt,"atelier");
+    toast("Alerte envoyee a Nicolas","s");
+    g("team-manque-txt").value="";
+  }catch(e){toast("Erreur: "+e.message,"e");}
+  finally{btn.disabled=false;}
+});
+
+// ---- PV de reception ----
+function initPvCanvas(){
+  var cnv=g("pv-canvas");
+  cnv.width=cnv.offsetWidth;cnv.height=cnv.offsetHeight;
+  pvCtx=cnv.getContext("2d");
+  pvCtx.clearRect(0,0,cnv.width,cnv.height);
+  pvCtx.strokeStyle="#1a1a1a";pvCtx.lineWidth=2;pvCtx.lineCap="round";
+  pvHasSignature=false;
+}
+function pvPos(e){
+  var cnv=g("pv-canvas");var r=cnv.getBoundingClientRect();
+  var x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  var y=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  return {x:x,y:y};
+}
+g("pv-canvas").addEventListener("pointerdown",function(e){pvDrawing=true;pvHasSignature=true;var p=pvPos(e);pvCtx.beginPath();pvCtx.moveTo(p.x,p.y);});
+g("pv-canvas").addEventListener("pointermove",function(e){if(!pvDrawing)return;var p=pvPos(e);pvCtx.lineTo(p.x,p.y);pvCtx.stroke();});
+window.addEventListener("pointerup",function(){pvDrawing=false;});
+g("btn-pv-clear").addEventListener("click",function(){initPvCanvas();});
+g("pv-reserve-toggle").addEventListener("click",function(){
+  var chk=g("pv-reserve-chk");chk.classList.toggle("ok");chk.textContent=chk.classList.contains("ok")?"✓":"";
+  g("pv-reserve-wrap").style.display=chk.classList.contains("ok")?"block":"none";
+});
+g("btn-open-pv").addEventListener("click",function(){
+  if(!teamCurrentId){toast("Ouvrez d'abord un chantier","e");return;}
+  var chk=g("pv-reserve-chk");chk.classList.remove("ok");chk.textContent="";
+  g("pv-reserve-wrap").style.display="none";g("pv-reserve-txt").value="";
+  show("p-pv");
+  setTimeout(initPvCanvas,50);
+});
+g("btn-back-pv").addEventListener("click",function(){show("p-team-view");});
+g("btn-pv-valider").addEventListener("click",async function(){
+  if(!teamCurrentId){toast("Aucun chantier ouvert","e");return;}
+  if(!pvHasSignature){toast("Signature requise","e");return;}
+  var avecReserves=g("pv-reserve-chk").classList.contains("ok");
+  var reserveTexte=g("pv-reserve-txt").value.trim();
+  if(avecReserves&&!reserveTexte){toast("Precisez les reserves","e");return;}
+  var btn=g("btn-pv-valider");btn.disabled=true;btn.textContent="Enregistrement...";
+  var pvReception={avecReserves:avecReserves,reserveTexte:reserveTexte,signatureDataURL:g("pv-canvas").toDataURL("image/png"),signePar:currentUser?currentUser.prenom:"",signeLe:new Date().toISOString()};
+  try{
+    var updateData={pvReception:pvReception,statut:"termine"};
+    if(avecReserves){
+      var savEntry={id:"sav"+Date.now(),texte:reserveTexte,statut:"attente_date",dateIntervention:"",createdAt:new Date().toISOString()};
+      updateData.sav=arrayUnion(savEntry);
+    }
+    await updateDoc(doc(db,"chantiers",teamCurrentId),updateData);
+    await creerNotification(avecReserves?"reserve_sav":"pv_signe",teamCurrentId,teamCurrentChantier.client||"","PV signe"+(avecReserves?" AVEC reserves":" sans reserves")+" - "+(teamCurrentChantier.client||"")+(avecReserves?" : "+reserveTexte:""),"admin");
+    toast("PV enregistre","s");
+    show(currentUser&&currentUser.role==="atelier"?"p-atelier":"p-equipe");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+  finally{btn.disabled=false;btn.textContent="Valider le PV";}
+});
+
+// ---- Notifications ----
+function badgeUpdate(target,badgeId){
+  onSnapshot(query(collection(db,"notifications"),where("target","==",target),where("lu","==",false)),function(snap){
+    var n=snap.size;var b=g(badgeId);
+    if(!b)return;
+    if(n>0){b.style.display="block";b.textContent=n>99?"99+":n;}else{b.style.display="none";}
+  });
+}
+function ouvrirNotifs(){
+  var target=currentUser&&currentUser.role==="atelier"?"atelier":"admin";
+  var q=query(collection(db,"notifications"),where("target","==",target),orderBy("createdAt","desc"));
+  onSnapshot(q,function(snap){
+    var el=g("notifs-liste");
+    if(snap.empty){el.innerHTML='<div class="empty"><div class="ei">🔔</div><div class="et">Aucune notification</div></div>';return;}
+    el.innerHTML="";
+    snap.forEach(function(d){
+      var n=d.data();
+      var div=document.createElement("div");
+      div.className="card";div.style.cssText=n.lu?"opacity:.55":"border-left:3px solid var(--or)";
+      var dt=n.createdAt&&n.createdAt.toDate?n.createdAt.toDate().toLocaleString("fr-FR"):"";
+      div.innerHTML='<div class="card-sub">'+dt+'</div><div style="font-size:13px;margin-top:3px">'+(n.message||"").replace(/</g,"&lt;")+'</div>';
+      div.addEventListener("click",async function(){
+        if(!n.lu){try{await updateDoc(doc(db,"notifications",d.id),{lu:true});}catch(e){}}
+      });
+      el.appendChild(div);
+    });
+  });
+}
+g("btn-notifs").addEventListener("click",function(){ouvrirNotifs();show("p-notifs");});
+g("btn-notifs-at").addEventListener("click",function(){ouvrirNotifs();show("p-notifs");});
+g("btn-back-notifs").addEventListener("click",function(){
+  show(currentUser&&currentUser.role==="atelier"?"p-atelier":"p-dash");
+});
+g("btn-notifs-clear").addEventListener("click",async function(){
+  var target=currentUser&&currentUser.role==="atelier"?"atelier":"admin";
+  try{
+    var snap=await new Promise(function(res){var un=onSnapshot(query(collection(db,"notifications"),where("target","==",target),where("lu","==",false)),function(s){un();res(s);});});
+    var proms=[];snap.forEach(function(d){proms.push(updateDoc(doc(db,"notifications",d.id),{lu:true}));});
+    await Promise.all(proms);
+    toast("Notifications marquees comme lues","s");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+});
+
+// ---- SAV admin ----
+g("m-sav").addEventListener("click",function(){chargerSav();show("p-sav");});
+g("btn-back-sav").addEventListener("click",function(){show("p-plus");});
+function chargerSav(){
+  var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
+  onSnapshot(q,function(snap){
+    var el=g("sav-liste");
+    var items=[];
+    snap.forEach(function(d){
+      var c=d.data();
+      (c.sav||[]).forEach(function(s,i){items.push({chantierId:d.id,chantier:c,savIdx:i,sav:s});});
+    });
+    var enAttente=items.filter(function(it){return it.sav.statut==="attente_date";});
+    var planifies=items.filter(function(it){return it.sav.statut==="planifie";});
+    if(items.length===0){el.innerHTML='<div class="empty"><div class="ei">🎧</div><div class="et">Aucun SAV</div></div>';return;}
+    el.innerHTML="";
+    if(enAttente.length){
+      var t1=document.createElement("p");t1.className="sec";t1.textContent="En attente de date";el.appendChild(t1);
+      enAttente.forEach(function(it){el.appendChild(savCard(it,true));});
+    }
+    if(planifies.length){
+      var t2=document.createElement("p");t2.className="sec";t2.textContent="Planifies";el.appendChild(t2);
+      planifies.forEach(function(it){el.appendChild(savCard(it,false));});
+    }
+  });
+}
+function savCard(it,editable){
+  var div=document.createElement("div");div.className="card";
+  var dateVal=it.sav.dateIntervention||"";
+  div.innerHTML='<div class="card-row"><span class="card-title">'+(it.chantier.client||"Chantier")+'</span>'+(editable?'<span class="bdg ba">Attente date</span>':'<span class="bdg bb">Planifie '+dateVal+'</span>')+'</div>'
+    +'<div class="card-sub">'+(it.chantier.adresse||"")+' - '+(it.chantier.ville||"")+'</div>'
+    +'<div style="font-size:12px;margin-top:6px">'+(it.sav.texte||"").replace(/</g,"&lt;")+'</div>'
+    +(editable?'<div style="display:flex;gap:6px;margin-top:8px"><input type="date" class="fi sav-date-input" style="flex:1"><button class="bts sav-confirm-btn" style="margin:0;flex:0 0 auto;padding:9px 14px">Confirmer</button></div>':"");
+  if(editable){
+    div.querySelector(".sav-confirm-btn").addEventListener("click",async function(){
+      var dv=div.querySelector(".sav-date-input").value;
+      if(!dv){toast("Choisissez une date","e");return;}
+      var newSav=(it.chantier.sav||[]).slice();
+      newSav[it.savIdx]=Object.assign({},newSav[it.savIdx],{statut:"planifie",dateIntervention:dv});
+      try{
+        await updateDoc(doc(db,"chantiers",it.chantierId),{sav:newSav});
+        toast("SAV planifie","s");
+      }catch(e){toast("Erreur: "+e.message,"e");}
+    });
+  }
+  return div;
+}
+
+
 
 g("f-pdf").addEventListener("change",async function(e){
   var fichier=e.target.files[0];if(!fichier)return;
@@ -867,8 +1223,8 @@ onAuthStateChanged(auth,function(user){
     var saved=localStorage.getItem("mmm_user");
     if(saved){
       currentUser=JSON.parse(saved);
-      if(currentUser.role==="admin"){g("dash-nom").textContent=currentUser.prenom;chargerDash();show("p-dash");}
-      else if(currentUser.role==="atelier"){g("atelier-nom").textContent=currentUser.prenom;chargerListeTeam("liste-atelier");show("p-atelier");}
+      if(currentUser.role==="admin"){g("dash-nom").textContent=currentUser.prenom;chargerDash();badgeUpdate("admin","notif-badge");show("p-dash");}
+      else if(currentUser.role==="atelier"){g("atelier-nom").textContent=currentUser.prenom;chargerListeTeam("liste-atelier");badgeUpdate("atelier","notif-badge-at");show("p-atelier");}
       else{g("equipe-nom").textContent=currentUser.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
     }
   }
