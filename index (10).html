@@ -225,6 +225,7 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="con">
   <div class="card" style="cursor:pointer" id="m-renta"><div class="card-row"><span class="card-title">📊 Rentabilite</span><span style="color:var(--mu)">›</span></div></div>
   <div class="card" style="cursor:pointer" id="m-sav"><div class="card-row"><span class="card-title">🎧 SAV</span><span style="color:var(--mu)">›</span></div></div>
+  <div class="card" style="cursor:pointer" id="m-config"><div class="card-row"><span class="card-title">🖊️ Signature &amp; tampon</span><span style="color:var(--mu)">›</span></div></div>
   <div class="div"></div>
   <div class="card" style="cursor:pointer" id="btn-logout"><div style="color:var(--rd);font-size:13px;font-weight:500">🚪 Se deconnecter</div></div>
 </div>
@@ -247,7 +248,7 @@ body{display:flex;align-items:center;justify-content:center}
 </div>
 
 <div class="page" id="p-equipe">
-<div class="topbar"><div class="tb-logo"></div><span class="tb-title">Bonjour <span id="equipe-nom">Equipe</span></span></div>
+<div class="topbar"><div class="tb-logo"></div><span class="tb-title">Bonjour <span id="equipe-nom">Equipe</span></span><span class="tb-icon" id="btn-notifs-eq" style="position:relative">🔔<span id="notif-badge-eq" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--rd);color:#fff;font-size:9px;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:1.3">0</span></span></div>
 <div class="con">
   <p class="sec">SAV planifies</p>
   <div id="sav-list-equipe" style="margin-bottom:6px"></div>
@@ -267,6 +268,11 @@ body{display:flex;align-items:center;justify-content:center}
       <a class="call-btn" id="team-tel-link" href="#">📞 Appeler</a>
       <a class="gps-btn" id="team-gps-link" href="#" target="_blank">📍 Itineraire</a>
     </div>
+  </div>
+  <div id="team-pointage-wrap" style="display:none">
+    <p class="sec">Pointage chantier</p>
+    <div class="card" id="team-pointage-info" style="cursor:default"></div>
+    <button class="bto" id="btn-pointage-toggle" style="margin-top:0"></button>
   </div>
   <div id="team-typespose-wrap" style="display:none">
     <p class="sec">Types de pose</p>
@@ -357,12 +363,26 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="con"><div id="notifcr-detail"></div></div>
 </div>
 
+<div class="page" id="p-config">
+<div class="topbar"><span class="tb-back" id="btn-back-config">←</span><span class="tb-title">Signature &amp; tampon</span></div>
+<div class="con">
+  <p class="sec">Signature du gerant</p>
+  <div id="config-sig-preview" style="margin-bottom:8px"></div>
+  <label class="uz"><input type="file" accept="image/*" id="cfg-sig-file" style="display:none"><div style="font-size:20px">✍️</div><div style="font-size:12px">Ajouter/remplacer la signature</div></label>
+  <div class="div"></div>
+  <p class="sec">Tampon de l'entreprise</p>
+  <div id="config-tampon-preview" style="margin-bottom:8px"></div>
+  <label class="uz"><input type="file" accept="image/*" id="cfg-tampon-file" style="display:none"><div style="font-size:20px">🔖</div><div style="font-size:12px">Ajouter/remplacer le tampon</div></label>
+  <button class="bto" id="btn-config-save">Enregistrer</button>
+</div>
+</div>
+
 </div>
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, onSnapshot, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const app = initializeApp({apiKey:"AIzaSyCibRjbNb5nYPADqFsgRcLJ_flaV9Ldors",authDomain:"mmm-chantiers.firebaseapp.com",projectId:"mmm-chantiers",storageBucket:"mmm-chantiers.firebasestorage.app",messagingSenderId:"625594778682",appId:"1:625594778682:web:89669fc9ad978a220fe103"});
@@ -426,7 +446,7 @@ g("btn-login").addEventListener("click", async function(){
     localStorage.setItem("mmm_user",JSON.stringify(currentUser));
     if(u.role==="admin"){g("dash-nom").textContent=u.prenom;chargerDash();badgeUpdate("admin","notif-badge");show("p-dash");}
     else if(u.role==="atelier"){g("atelier-nom").textContent=u.prenom;chargerListeTeam("liste-atelier");badgeUpdate("atelier","notif-badge-at");show("p-atelier");}
-    else{g("equipe-nom").textContent=u.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
+    else{g("equipe-nom").textContent=u.prenom;chargerListeTeam("liste-equipe");badgeUpdate("equipe","notif-badge-eq");show("p-equipe");}
     toast("Connecte - "+u.prenom,"s");
   } catch(e){
     err.textContent=e.message;err.style.display="block";
@@ -802,9 +822,42 @@ async function ouvrirVueTeam(id){
     renderLivraisonsTeam(c.livraisons||[]);
     renderTachesTeam(c.taches||[]);
     renderComptesRendus(c.comptesRendus||[]);
+    renderPointage(c);
     renderPvStatut(c);
     show("p-team-view");
   }catch(e){toast("Erreur: "+e.message,"e");}
+}
+
+function renderPointage(c){
+  var wrap=g("team-pointage-wrap");
+  var isEquipe=currentUser&&currentUser.role==="equipe";
+  if(!isEquipe){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  var pointages=c.pointages||[];
+  var mine=pointages.filter(function(p){return p.equipe===currentUser.prenom;});
+  var ouvert=mine.length?mine[mine.length-1]:null;
+  var info=g("team-pointage-info");
+  var btn=g("btn-pointage-toggle");
+  if(ouvert&&!ouvert.depart){
+    var hArr=new Date(ouvert.arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    info.innerHTML='<div style="font-size:12px;color:var(--gn)">✓ Arrivee pointee a '+hArr+'</div>';
+    btn.textContent="Pointer le depart";
+    btn.onclick=async function(){
+      var newP=pointages.slice();
+      for(var i=newP.length-1;i>=0;i--){if(newP[i].equipe===currentUser.prenom&&!newP[i].depart){newP[i]=Object.assign({},newP[i],{depart:new Date().toISOString()});break;}}
+      try{await updateDoc(doc(db,"chantiers",teamCurrentId),{pointages:newP});c.pointages=newP;renderPointage(c);toast("Depart pointe","s");}
+      catch(e){toast("Erreur: "+e.message,"e");}
+    };
+  } else {
+    var dernier=mine.length?mine[mine.length-1]:null;
+    info.innerHTML=dernier?'<div style="font-size:12px;color:var(--mu)">Dernier passage : '+new Date(dernier.arrivee).toLocaleDateString("fr-FR")+' ('+new Date(dernier.arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+' - '+(dernier.depart?new Date(dernier.depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"?")+')</div>':'<div style="font-size:12px;color:var(--mu)">Aucun passage enregistre</div>';
+    btn.textContent="Pointer l'arrivee";
+    btn.onclick=async function(){
+      var newP=pointages.concat([{equipe:currentUser.prenom,arrivee:new Date().toISOString(),depart:null}]);
+      try{await updateDoc(doc(db,"chantiers",teamCurrentId),{pointages:newP});c.pointages=newP;renderPointage(c);toast("Arrivee pointee","s");}
+      catch(e){toast("Erreur: "+e.message,"e");}
+    };
+  }
 }
 
 function renderPrepAtelier(c){
@@ -924,8 +977,14 @@ function renderPvStatut(c){
   el.style.display="block";
   var pv=c.pvReception;
   var d=pv.signeLe?new Date(pv.signeLe).toLocaleDateString("fr-FR"):"";
-  el.innerHTML='<div class="card-row"><span class="card-title">PV signe le '+d+'</span>'+(pv.avecReserves?'<span class="bdg br2">Avec reserves</span>':'<span class="bdg bg">Sans reserves</span>')+'</div>'
+  var html='<div class="card-row"><span class="card-title">PV signe le '+d+'</span>'+(pv.avecReserves?'<span class="bdg br2">Avec reserves</span>':'<span class="bdg bg">Sans reserves</span>')+'</div>'
     +(pv.avecReserves&&pv.reserveTexte?'<div class="card-sub" style="margin-top:4px">'+pv.reserveTexte.replace(/</g,"&lt;")+'</div>':"");
+  html+='<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">';
+  if(pv.signatureDataURL) html+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">Signature client</div><img src="'+pv.signatureDataURL+'" style="width:110px;height:60px;object-fit:contain;border:1px solid var(--br);border-radius:6px;background:#fff"></div>';
+  if(pv.signatureGerant) html+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">Signature gerant</div><img src="'+pv.signatureGerant+'" style="width:110px;height:60px;object-fit:contain;border:1px solid var(--br);border-radius:6px;background:#fff"></div>';
+  if(pv.tampon) html+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">Tampon</div><img src="'+pv.tampon+'" style="width:70px;height:70px;object-fit:contain;border:1px solid var(--br);border-radius:6px;background:#fff"></div>';
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 async function creerNotification(type,chantierId,chantierNom,message,target,refId){
@@ -1071,6 +1130,14 @@ g("btn-pv-valider").addEventListener("click",async function(){
   var btn=g("btn-pv-valider");btn.disabled=true;btn.textContent="Enregistrement...";
   var pvReception={avecReserves:avecReserves,reserveTexte:reserveTexte,signatureDataURL:g("pv-canvas").toDataURL("image/png"),signePar:currentUser?currentUser.prenom:"",signeLe:new Date().toISOString()};
   try{
+    try{
+      var cfgSnap=await getDoc(doc(db,"config","entreprise"));
+      if(cfgSnap.exists()){
+        var cfgD=cfgSnap.data();
+        if(cfgD.signatureGerant) pvReception.signatureGerant=cfgD.signatureGerant;
+        if(cfgD.tampon) pvReception.tampon=cfgD.tampon;
+      }
+    }catch(e){}
     var updateData={pvReception:pvReception,statut:"termine"};
     if(avecReserves){
       var savEntry={id:"sav"+Date.now(),texte:reserveTexte,statut:"attente_date",dateIntervention:"",createdAt:new Date().toISOString()};
@@ -1092,8 +1159,14 @@ function badgeUpdate(target,badgeId){
     if(n>0){b.style.display="block";b.textContent=n>99?"99+":n;}else{b.style.display="none";}
   });
 }
+function targetPourUtilisateur(){
+  if(!currentUser) return "admin";
+  if(currentUser.role==="atelier") return "atelier";
+  if(currentUser.role==="equipe") return "equipe";
+  return "admin";
+}
 function ouvrirNotifs(){
-  var target=currentUser&&currentUser.role==="atelier"?"atelier":"admin";
+  var target=targetPourUtilisateur();
   var q=query(collection(db,"notifications"),where("target","==",target),orderBy("createdAt","desc"));
   onSnapshot(q,function(snap){
     var el=g("notifs-liste");
@@ -1124,16 +1197,16 @@ async function ouvrirDepuisNotif(n){
       var cr=n.refId?crs.find(function(x){return x.id===n.refId;}):null;
       if(!cr) cr=crs[crs.length-1];
       if(!cr){toast("Compte-rendu introuvable","e");return;}
-      afficherDetailCr(cr,c.client||"");
+      afficherDetailCr(cr,c.client||"",n.chantierId);
       show("p-notif-cr");
-    } else if(currentUser&&currentUser.role==="atelier"){
+    } else if(currentUser&&(currentUser.role==="atelier"||currentUser.role==="equipe")){
       await ouvrirVueTeam(n.chantierId);
     } else {
       await ouvrirFiche(n.chantierId);
     }
   }catch(e){toast("Erreur: "+e.message,"e");}
 }
-function afficherDetailCr(cr,clientNom){
+function afficherDetailCr(cr,clientNom,chantierId){
   var el=g("notifcr-detail");
   var d=cr.date?new Date(cr.date).toLocaleDateString("fr-FR"):"";
   var html='<div class="card"><div class="card-row"><span class="card-title">'+(clientNom||"")+'</span>'+(cr.probleme?'<span class="bdg br2">Probleme</span>':'<span class="bdg bg">OK</span>')+'</div><div class="card-sub">'+d+" - "+(cr.equipe||"")+'</div></div>';
@@ -1150,17 +1223,34 @@ function afficherDetailCr(cr,clientNom){
   }
   if(cr.probleme){
     html+='<p class="sec">Probleme signale</p><div class="card" style="background:var(--lr);border-color:#f5c6c6;color:var(--rd);font-size:13px">'+cr.probleme.replace(/</g,"&lt;")+'</div>';
+    if(currentUser&&currentUser.role==="admin"&&chantierId){
+      html+='<button class="bto" id="btn-creer-sav-cr" style="margin-top:10px">Creer un SAV pour ce probleme</button>';
+    }
   }
   el.innerHTML=html;
+  if(currentUser&&currentUser.role==="admin"&&chantierId&&cr.probleme){
+    g("btn-creer-sav-cr").addEventListener("click",async function(){
+      var btn=g("btn-creer-sav-cr");btn.disabled=true;btn.textContent="Creation...";
+      try{
+        var savEntry={id:"sav"+Date.now(),texte:cr.probleme,statut:"attente_date",dateIntervention:"",createdAt:new Date().toISOString()};
+        await updateDoc(doc(db,"chantiers",chantierId),{sav:arrayUnion(savEntry)});
+        toast("SAV cree","s");
+        btn.textContent="SAV cree ✓";
+      }catch(e){toast("Erreur: "+e.message,"e");btn.disabled=false;btn.textContent="Creer un SAV pour ce probleme";}
+    });
+  }
 }
 g("btn-back-notifcr").addEventListener("click",function(){show("p-notifs");});
 g("btn-notifs").addEventListener("click",function(){ouvrirNotifs();show("p-notifs");});
 g("btn-notifs-at").addEventListener("click",function(){ouvrirNotifs();show("p-notifs");});
+g("btn-notifs-eq").addEventListener("click",function(){ouvrirNotifs();show("p-notifs");});
 g("btn-back-notifs").addEventListener("click",function(){
-  show(currentUser&&currentUser.role==="atelier"?"p-atelier":"p-dash");
+  if(currentUser&&currentUser.role==="atelier")show("p-atelier");
+  else if(currentUser&&currentUser.role==="equipe")show("p-equipe");
+  else show("p-dash");
 });
 g("btn-notifs-clear").addEventListener("click",async function(){
-  var target=currentUser&&currentUser.role==="atelier"?"atelier":"admin";
+  var target=targetPourUtilisateur();
   try{
     var snap=await new Promise(function(res){var un=onSnapshot(query(collection(db,"notifications"),where("target","==",target),where("lu","==",false)),function(s){un();res(s);});});
     var proms=[];snap.forEach(function(d){proms.push(updateDoc(doc(db,"notifications",d.id),{lu:true}));});
@@ -1171,6 +1261,46 @@ g("btn-notifs-clear").addEventListener("click",async function(){
 
 // ---- SAV admin ----
 g("m-sav").addEventListener("click",function(){chargerSav();show("p-sav");});
+
+// ---- Config signature / tampon ----
+var cfgSigTemp=null, cfgTamponTemp=null;
+async function chargerConfig(){
+  cfgSigTemp=null;cfgTamponTemp=null;
+  var sigEl=g("config-sig-preview"), tamEl=g("config-tampon-preview");
+  sigEl.innerHTML='<div style="font-size:11px;color:var(--mu)">Chargement...</div>';
+  tamEl.innerHTML="";
+  try{
+    var snap=await getDoc(doc(db,"config","entreprise"));
+    var d=snap.exists()?snap.data():{};
+    sigEl.innerHTML=d.signatureGerant?'<img src="'+d.signatureGerant+'" style="max-width:200px;max-height:100px;border:1px solid var(--br);border-radius:8px;background:#fff;padding:6px">':'<div style="font-size:11px;color:var(--mu)">Aucune signature enregistree</div>';
+    tamEl.innerHTML=d.tampon?'<img src="'+d.tampon+'" style="max-width:150px;max-height:150px;border:1px solid var(--br);border-radius:8px;background:#fff;padding:6px">':'<div style="font-size:11px;color:var(--mu)">Aucun tampon enregistre</div>';
+  }catch(e){sigEl.innerHTML='';toast("Erreur: "+e.message,"e");}
+}
+g("m-config").addEventListener("click",function(){chargerConfig();show("p-config");});
+g("btn-back-config").addEventListener("click",function(){show("p-plus");});
+g("cfg-sig-file").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;
+  compressPhoto(f,function(durl){cfgSigTemp=durl;g("config-sig-preview").innerHTML='<img src="'+durl+'" style="max-width:200px;max-height:100px;border:1px solid var(--br);border-radius:8px;background:#fff;padding:6px">';});
+});
+g("cfg-tampon-file").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;
+  compressPhoto(f,function(durl){cfgTamponTemp=durl;g("config-tampon-preview").innerHTML='<img src="'+durl+'" style="max-width:150px;max-height:150px;border:1px solid var(--br);border-radius:8px;background:#fff;padding:6px">';});
+});
+g("btn-config-save").addEventListener("click",async function(){
+  var btn=g("btn-config-save");btn.disabled=true;btn.textContent="Enregistrement...";
+  try{
+    var data={};
+    if(cfgSigTemp)data.signatureGerant=cfgSigTemp;
+    if(cfgTamponTemp)data.tampon=cfgTamponTemp;
+    if(Object.keys(data).length===0){toast("Rien de nouveau a enregistrer","e");return;}
+    await updateDocOrCreate("config","entreprise",data);
+    toast("Enregistre","s");
+  }catch(e){toast("Erreur: "+e.message,"e");}
+  finally{btn.disabled=false;btn.textContent="Enregistrer";}
+});
+async function updateDocOrCreate(coll,id,data){
+  await setDoc(doc(db,coll,id),data,{merge:true});
+}
 g("btn-back-sav").addEventListener("click",function(){show("p-plus");});
 function chargerSav(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -1210,6 +1340,7 @@ function savCard(it,editable){
       newSav[it.savIdx]=Object.assign({},newSav[it.savIdx],{statut:"planifie",dateIntervention:dv});
       try{
         await updateDoc(doc(db,"chantiers",it.chantierId),{sav:newSav});
+        await creerNotification("sav_planifie",it.chantierId,it.chantier.client||"","SAV planifie le "+dv+" - "+(it.chantier.client||""),"equipe");
         toast("SAV planifie","s");
       }catch(e){toast("Erreur: "+e.message,"e");}
     });
@@ -1378,7 +1509,7 @@ onAuthStateChanged(auth,function(user){
       currentUser=JSON.parse(saved);
       if(currentUser.role==="admin"){g("dash-nom").textContent=currentUser.prenom;chargerDash();badgeUpdate("admin","notif-badge");show("p-dash");}
       else if(currentUser.role==="atelier"){g("atelier-nom").textContent=currentUser.prenom;chargerListeTeam("liste-atelier");badgeUpdate("atelier","notif-badge-at");show("p-atelier");}
-      else{g("equipe-nom").textContent=currentUser.prenom;chargerListeTeam("liste-equipe");show("p-equipe");}
+      else{g("equipe-nom").textContent=currentUser.prenom;chargerListeTeam("liste-equipe");badgeUpdate("equipe","notif-badge-eq");show("p-equipe");}
     }
   }
 });
