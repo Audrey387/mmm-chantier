@@ -204,13 +204,18 @@ body{display:flex;align-items:center;justify-content:center}
   <div class="div"></div>
   <p class="sec">Travaux a realiser</p>
   <div id="fc-taches"><textarea class="fi" id="fc-taches-libre" style="min-height:80px" placeholder="Saisir les travaux..."></textarea></div>
+  <button class="bts" id="btn-add-tache" style="margin-top:0;margin-bottom:10px">+ Ajouter un travail</button>
   <div class="div"></div>
   <div class="conf"><span>Donnees financieres - direction uniquement</span></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-    <div class="field"><label>March. HT</label><input class="fi" id="fc-march" type="number" placeholder="0"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="field"><label>Devis HT (hors pose)</label><input class="fi" id="fc-march" type="number" placeholder="0"></div>
     <div class="field"><label>Pose HT</label><input class="fi" id="fc-pose-ht" type="number" placeholder="0"></div>
-    <div class="field"><label>Divers HT</label><input class="fi" id="fc-divers" type="number" placeholder="0"></div>
+    <div class="field"><label>Divers HT (dechetterie, livraison...)</label><input class="fi" id="fc-divers" type="number" placeholder="0"></div>
+    <div class="field"><label>Achat marchandise HT</label><input class="fi" id="fc-achat-march" type="number" placeholder="0"></div>
   </div>
+  <p class="sec">Autres lignes financieres</p>
+  <div id="fc-lignesfin"></div>
+  <button class="bts" id="btn-add-lignefin" style="margin-top:0;margin-bottom:10px">+ Ajouter une ligne</button>
   <button class="bto" id="btn-save2">Sauvegarder</button>
 </div>
 </div>
@@ -447,7 +452,7 @@ g("nb2-acc").addEventListener("click",function(){show("p-dash");});
 g("nb-plus").addEventListener("click",function(){show("p-plus");});
 g("btn-back-new").addEventListener("click",function(){show("p-dash");});
 g("btn-back-fiche").addEventListener("click",function(){show("p-dash");});
-g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);renderFabAtelier([]);g("btn-delete").style.display="none";show("p-fiche");});
+g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);renderFabAtelier([]);renderLignesFin([]);g("fc-achat-march").value="";g("btn-delete").style.display="none";show("p-fiche");});
 
 function chargerDash(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
@@ -486,6 +491,8 @@ async function ouvrirFiche(id){
     g("fc-debut").value=c.dateDebut?c.dateDebut.split("T")[0]:"";g("fc-fin").value=c.dateFin?c.dateFin.split("T")[0]:"";
     g("fc-pose").value=c.typesPose||"";g("fc-spec").value=c.specificites||"";g("fc-cons").value=c.consignes||"";
     g("fc-march").value=c.montantMarchandiseHT||"";g("fc-pose-ht").value=c.montantPoseHT||"";g("fc-divers").value=c.montantDiversHT||"";
+    g("fc-achat-march").value=c.montantAchatMarchandiseHT||"";
+    renderLignesFin(c.lignesFinancieres||[]);
     renderEq(c.equipe||[]);renderTaches(c.taches||[]);renderLivraisons(c.livraisons||[]);renderFabAtelier(c.fabAtelier||[]);
     g("btn-delete").style.display="block";
     show("p-fiche");
@@ -508,14 +515,46 @@ function renderTaches(taches){
   if(taches.length===0){el.innerHTML='<textarea class="fi" id="fc-taches-libre" style="min-height:80px" placeholder="Saisir les travaux..."></textarea>';return;}
   el.innerHTML="";
   taches.forEach(function(t){
-    var div=document.createElement("div");div.className="ck2";
-    var chk=document.createElement("div");chk.className="chk"+(t.fait?" ok":"");chk.textContent=t.fait?"✓":"";
-    var span=document.createElement("span");span.textContent=t.libelle;
-    div.appendChild(chk);div.appendChild(span);
-    div.addEventListener("click",function(){chk.classList.toggle("ok");chk.textContent=chk.classList.contains("ok")?"✓":"";});
-    el.appendChild(div);
+    ajouterTacheRow(t.libelle,t.fait);
   });
 }
+function ajouterTacheRow(libelle,fait){
+  var el=g("fc-taches");
+  var libre=g("fc-taches-libre");
+  if(libre){el.innerHTML="";}
+  var div=document.createElement("div");div.className="ck2";
+  var chk=document.createElement("div");chk.className="chk"+(fait?" ok":"");chk.textContent=fait?"✓":"";
+  var span=document.createElement("span");span.textContent=libelle;
+  div.appendChild(chk);div.appendChild(span);
+  div.addEventListener("click",function(){chk.classList.toggle("ok");chk.textContent=chk.classList.contains("ok")?"✓":"";});
+  el.appendChild(div);
+}
+g("btn-add-tache").addEventListener("click",function(){
+  var lib=prompt("Intitule du travail :");
+  if(!lib||!lib.trim())return;
+  ajouterTacheRow(lib.trim(),false);
+});
+
+function renderLignesFin(items){
+  var el=g("fc-lignesfin");el.innerHTML="";
+  if(!items||items.length===0){el.innerHTML='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">Aucune ligne ajoutee</div>';return;}
+  items.forEach(function(it){ajouterLigneFinRow(it);});
+}
+function ajouterLigneFinRow(prefill){
+  prefill=prefill||{};
+  var el=g("fc-lignesfin");
+  if(el.children.length===1&&!el.children[0].classList.contains("field")){el.innerHTML="";}
+  var row=document.createElement("div");
+  row.className="field";
+  row.innerHTML='<div style="display:flex;gap:6px;align-items:center">'
+    +'<input class="fi lf-lib" style="flex:2" placeholder="Intitule" value="'+(prefill.libelle||"").replace(/"/g,"&quot;")+'">'
+    +'<input class="fi lf-montant" type="number" style="flex:1" placeholder="Montant HT" value="'+(prefill.montant!=null?prefill.montant:"")+'">'
+    +'<span class="tb-icon lf-del" style="color:var(--rd);cursor:pointer">✕</span></div>';
+  row.querySelector(".lf-del").addEventListener("click",function(){row.remove();});
+  el.appendChild(row);
+  return row;
+}
+g("btn-add-lignefin").addEventListener("click",function(){ajouterLigneFinRow();});
 
 function renderLivraisons(livraisons){
   var el=g("fc-livraisons");el.innerHTML="";
@@ -672,7 +711,14 @@ async function sauvegarder(){
     if(!lib)return;
     fabAtelier.push({id:"fab"+i,libelle:lib,fait:r.dataset.fait==="1"});
   });
-  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,fabAtelier:fabAtelier,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,updatedAt:serverTimestamp()};
+  var lfRows=g("fc-lignesfin").querySelectorAll(".field");
+  var lignesFinancieres=[];
+  lfRows.forEach(function(r){
+    var lib=r.querySelector(".lf-lib").value.trim();
+    if(!lib)return;
+    lignesFinancieres.push({libelle:lib,montant:parseFloat(r.querySelector(".lf-montant").value)||0});
+  });
+  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,fabAtelier:fabAtelier,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,montantAchatMarchandiseHT:parseFloat(g("fc-achat-march").value)||0,lignesFinancieres:lignesFinancieres,updatedAt:serverTimestamp()};
   try {
     if(currentId){await updateDoc(doc(db,"chantiers",currentId),data);toast("Sauvegarde OK","s");}
     else{data.statut="planifie";data.etape=1;data.createdAt=serverTimestamp();var ref=await addDoc(collection(db,"chantiers"),data);currentId=ref.id;toast("Chantier cree!","s");show("p-dash");}
@@ -1318,6 +1364,8 @@ g("btn-val-import").addEventListener("click",function(){
   renderEq([]);
   renderLivraisons([]);
   renderFabAtelier([]);
+  renderLignesFin([]);
+  g("fc-achat-march").value="";
   if(importOuvrages.length>0){renderTaches(importOuvrages.map(function(o,i){return {id:"t"+i,libelle:o.designation,fait:false};}));}
   toast("Fiche pre-remplie - verifiez et sauvegardez","s");
   show("p-fiche");
