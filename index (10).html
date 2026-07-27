@@ -578,6 +578,10 @@ g("f-arc").addEventListener("change",async function(e){
     var datePrevue="";
     var mDate=atxt.match(/(?:D[ée]part usine|Livraison pr[ée]vue|D[ée]lai(?:\s+de\s+livraison)?|Livraison indicative)[^\n]*?(S(?:emaine)?\.?\s?\d{1,2}|\d{2}\/\d{2}\/\d{4})/i);
     if(mDate) datePrevue=mDate[1].trim();
+    if(!datePrevue){
+      var mDate2=atxt.match(/^\d{3}\s+\d+\s+[\d,]+\s+[\d,]+\s+(\d{1,2})\s*$/m);
+      if(mDate2) datePrevue="Semaine "+mDate2[1];
+    }
     var dimsM=Array.from(atxt.matchAll(/Haut\s+(\d+)\s*x\s*Larg\s+(\d+)\s+(\d+)\s*Vantaux/gi));
     var repM=Array.from(atxt.matchAll(/REPERE\s+([A-ZÀ-Ü0-9]+(?:\s+\d+)?)/gi));
     var detailLines=[];
@@ -592,6 +596,20 @@ g("f-arc").addEventListener("change",async function(e){
     if(detailLines.length===0){
       var lgM=Array.from(atxt.matchAll(/Largeur\s*:\s*(\d+)\s*mm\s*,\s*Hauteur\s*:\s*(\d+)\s*mm/gi));
       lgM.forEach(function(m){detailLines.push("Largeur "+m[1]+"mm x Hauteur "+m[2]+"mm");});
+    }
+    if(detailLines.length===0){
+      for(var ri=0;ri<lignes.length;ri++){
+        var mRep2=lignes[ri].match(/Rep[eè]re\s*:\s*(\S+)/i);
+        if(!mRep2) continue;
+        for(var rj=ri+1;rj<Math.min(ri+5,lignes.length);rj++){
+          var mQte2=lignes[rj].match(/Quantit[eé]\s*:\s*(\d+)/i);
+          if(mQte2){
+            var desigR=lignes[rj-1].trim();
+            if(desigR&&desigR.length<80) detailLines.push(desigR+" (Repere "+mRep2[1]+") - Qte "+mQte2[1]);
+            break;
+          }
+        }
+      }
     }
     var detail=detailLines.join("\n");
     ajouterLivraisonRow({fournisseur:fournisseur,ref:ref,datePrevue:datePrevue,detail:detail});
