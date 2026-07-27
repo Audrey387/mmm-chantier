@@ -239,10 +239,10 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="page" id="p-atelier">
 <div class="topbar"><div class="tb-logo"></div><span class="tb-title">Atelier - <span id="atelier-nom">Nicolas</span></span><span class="tb-icon" id="btn-notifs-at" style="position:relative">🔔<span id="notif-badge-at" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--rd);color:#fff;font-size:9px;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:1.3">0</span></span></div>
 <div class="con">
-  <p class="sec">SAV planifies</p>
-  <div id="sav-list-atelier" style="margin-bottom:6px"></div>
   <p class="sec">Chantiers</p>
   <div id="liste-atelier"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
+  <p class="sec">SAV planifies</p>
+  <div id="sav-list-atelier" style="margin-bottom:6px"></div>
 </div>
 <div style="padding:14px"><button class="bts" id="btn-logout-nic">Se deconnecter</button></div>
 </div>
@@ -250,10 +250,10 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="page" id="p-equipe">
 <div class="topbar"><div class="tb-logo"></div><span class="tb-title">Bonjour <span id="equipe-nom">Equipe</span></span><span class="tb-icon" id="btn-notifs-eq" style="position:relative">🔔<span id="notif-badge-eq" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--rd);color:#fff;font-size:9px;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:1.3">0</span></span></div>
 <div class="con">
-  <p class="sec">SAV planifies</p>
-  <div id="sav-list-equipe" style="margin-bottom:6px"></div>
   <p class="sec">Chantiers</p>
   <div id="liste-equipe"><div class="empty"><div class="ei">⏳</div><div class="et">Chargement...</div></div></div>
+  <p class="sec">SAV planifies</p>
+  <div id="sav-list-equipe" style="margin-bottom:6px"></div>
 </div>
 <div style="padding:14px"><button class="bts" id="btn-logout-eq">Se deconnecter</button></div>
 </div>
@@ -795,7 +795,9 @@ function chargerListeTeam(containerId){
       var bl=s==="en_cours"?"var(--gn)":"var(--bl)";
       var div=document.createElement("div");
       div.className="card";div.style.cssText="border-left:4px solid "+bl+";cursor:pointer";
-      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+'/12</div><div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
+      var dateTxt="";
+      if(c.dateDebut){var dd=new Date(c.dateDebut);if(!isNaN(dd)) dateTxt=" - Debut le "+dd.toLocaleDateString("fr-FR");}
+      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+"/12"+dateTxt+'</div><div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
       div.addEventListener("click",function(){ouvrirVueTeam(c.id);});
       el.appendChild(div);
     });
