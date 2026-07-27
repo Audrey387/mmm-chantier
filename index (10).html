@@ -134,6 +134,7 @@ body{display:flex;align-items:center;justify-content:center}
     <p class="sec">Verifiez et corrigez si besoin</p>
     <div class="field"><label>Client</label><input class="fi" id="if-client" type="text"></div>
     <div class="field"><label>Telephone</label><input class="fi" id="if-tel" type="tel"></div>
+    <div class="field"><label>Email</label><input class="fi" id="if-email" type="email"></div>
     <div class="field"><label>Adresse</label><input class="fi" id="if-adresse" type="text"></div>
     <div class="field"><label>CP + Ville</label><input class="fi" id="if-ville" type="text"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -163,6 +164,7 @@ body{display:flex;align-items:center;justify-content:center}
       <a class="call-btn" id="fc-tel-link" href="#">📞</a>
     </div>
   </div>
+  <div class="field"><label>Email client</label><input class="fi" id="fc-email" type="email" placeholder="email@client.com"></div>
   <div class="field"><label>Adresse</label>
     <div style="display:flex;gap:7px;align-items:center">
       <input class="fi" id="fc-adresse" type="text" style="flex:1">
@@ -478,10 +480,24 @@ g("btn-back-new").addEventListener("click",function(){show("p-dash");});
 g("btn-back-fiche").addEventListener("click",function(){show("p-dash");});
 g("btn-manuel").addEventListener("click",function(){currentId=null;g("fiche-titre").textContent="Nouveau chantier";renderEq([]);renderLivraisons([]);renderFabAtelier([]);renderLignesFin([]);g("fc-achat-march").value="";g("btn-delete").style.display="none";show("p-fiche");});
 
+function trierParDate(arr){
+  return arr.slice().sort(function(a,b){
+    var da=a.dateDebut?new Date(a.dateDebut).getTime():Infinity;
+    var dbb=b.dateDebut?new Date(b.dateDebut).getTime():Infinity;
+    return da-dbb;
+  });
+}
+function dateBadgeHtml(c){
+  if(!c.dateDebut) return "";
+  var dd=new Date(c.dateDebut);
+  if(isNaN(dd)) return "";
+  return '<div style="font-size:12px;font-weight:700;color:var(--or);margin-top:5px">📅 Debut le '+dd.toLocaleDateString("fr-FR")+'</div>';
+}
+
 function chargerDash(){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
   unsub=onSnapshot(q,function(snap){
-    var ch=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var ch=trierParDate(snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}));
     g("s-cours").textContent=ch.filter(function(c){return c.statut==="en_cours";}).length;
     g("s-plan").textContent=ch.filter(function(c){return c.statut==="planifie";}).length;
     g("s-term").textContent=ch.filter(function(c){return c.statut==="termine";}).length;
@@ -496,7 +512,7 @@ function chargerDash(){
       var bl=s==="en_cours"?"var(--gn)":s==="bloque"?"var(--rd)":"var(--bl)";
       var div=document.createElement("div");
       div.className="card";div.style.cssText="border-left:4px solid "+bl+";cursor:pointer";
-      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+'/12</div><div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
+      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+'/12</div>'+dateBadgeHtml(c)+'<div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
       div.addEventListener("click",function(){ouvrirFiche(c.id);});
       el.appendChild(div);
     });
@@ -510,7 +526,7 @@ async function ouvrirFiche(id){
     var c=Object.assign({id:snap.id},snap.data());
     currentId=id;
     g("fiche-titre").textContent=c.client||"Chantier";
-    g("fc-client").value=c.client||"";g("fc-tel").value=c.telephone||"";
+    g("fc-client").value=c.client||"";g("fc-tel").value=c.telephone||"";g("fc-email").value=c.email||"";
     g("fc-adresse").value=c.adresse||"";g("fc-ville").value=(c.codePostal||"")+" "+(c.ville||"");
     g("fc-debut").value=c.dateDebut?c.dateDebut.split("T")[0]:"";g("fc-fin").value=c.dateFin?c.dateFin.split("T")[0]:"";
     g("fc-pose").value=c.typesPose||"";g("fc-spec").value=c.specificites||"";g("fc-cons").value=c.consignes||"";
@@ -742,7 +758,7 @@ async function sauvegarder(){
     if(!lib)return;
     lignesFinancieres.push({libelle:lib,montant:parseFloat(r.querySelector(".lf-montant").value)||0});
   });
-  var data={client:g("fc-client").value,telephone:g("fc-tel").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,fabAtelier:fabAtelier,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,montantAchatMarchandiseHT:parseFloat(g("fc-achat-march").value)||0,lignesFinancieres:lignesFinancieres,updatedAt:serverTimestamp()};
+  var data={client:g("fc-client").value,telephone:g("fc-tel").value,email:g("fc-email").value,adresse:g("fc-adresse").value,ville:g("fc-ville").value,dateDebut:g("fc-debut").value||null,dateFin:g("fc-fin").value||null,typesPose:g("fc-pose").value,specificites:g("fc-spec").value,consignes:g("fc-cons").value,equipe:equipe,taches:taches,livraisons:livraisons,fabAtelier:fabAtelier,montantMarchandiseHT:parseFloat(g("fc-march").value)||0,montantPoseHT:parseFloat(g("fc-pose-ht").value)||0,montantDiversHT:parseFloat(g("fc-divers").value)||0,montantAchatMarchandiseHT:parseFloat(g("fc-achat-march").value)||0,lignesFinancieres:lignesFinancieres,updatedAt:serverTimestamp()};
   try {
     if(currentId){await updateDoc(doc(db,"chantiers",currentId),data);toast("Sauvegarde OK","s");}
     else{data.statut="planifie";data.etape=1;data.createdAt=serverTimestamp();var ref=await addDoc(collection(db,"chantiers"),data);currentId=ref.id;toast("Chantier cree!","s");show("p-dash");}
@@ -768,7 +784,7 @@ function chargerListeTeam(containerId){
   var q=query(collection(db,"chantiers"),orderBy("createdAt","desc"));
   var savContainerId=containerId.replace("liste-","sav-list-");
   teamUnsub=onSnapshot(q,function(snap){
-    var all=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var all=trierParDate(snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}));
     var ch=all.filter(function(c){return c.statut!=="termine";});
     var savEl=g(savContainerId);
     if(savEl){
@@ -795,9 +811,7 @@ function chargerListeTeam(containerId){
       var bl=s==="en_cours"?"var(--gn)":"var(--bl)";
       var div=document.createElement("div");
       div.className="card";div.style.cssText="border-left:4px solid "+bl+";cursor:pointer";
-      var dateTxt="";
-      if(c.dateDebut){var dd=new Date(c.dateDebut);if(!isNaN(dd)) dateTxt=" - Debut le "+dd.toLocaleDateString("fr-FR");}
-      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+"/12"+dateTxt+'</div><div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
+      div.innerHTML='<div class="card-row"><span class="card-title">'+(c.client||"Chantier")+'</span><span class="bdg '+bcl+'">'+btx+'</span></div><div class="card-sub">'+(c.ville||"")+" - Etape "+(c.etape||1)+'/12</div>'+dateBadgeHtml(c)+'<div class="prog"><div class="pf" style="width:'+pct+'%"></div></div>';
       div.addEventListener("click",function(){ouvrirVueTeam(c.id);});
       el.appendChild(div);
     });
@@ -990,7 +1004,20 @@ function renderPvStatut(c){
   if(pv.signatureGerant) html+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">Signature gerant</div><img src="'+pv.signatureGerant+'" style="width:110px;height:60px;object-fit:contain;border:1px solid var(--br);border-radius:6px;background:#fff"></div>';
   if(pv.tampon) html+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">Tampon</div><img src="'+pv.tampon+'" style="width:70px;height:70px;object-fit:contain;border:1px solid var(--br);border-radius:6px;background:#fff"></div>';
   html+='</div>';
+  html+='<a class="bts" id="btn-pv-email" style="margin-top:10px;display:block;text-align:center;text-decoration:none" target="_blank">✉️ Envoyer le PV par email au client</a>';
   el.innerHTML=html;
+  var lienBtn=g("btn-pv-email");
+  var sujet=encodeURIComponent("PV de reception - "+(c.client||""));
+  var corps=encodeURIComponent(
+    "Bonjour,\n\n"+
+    "Veuillez trouver ci-dessous le recapitulatif du PV de reception signe le "+d+" pour le chantier situe "+(c.adresse||"")+" - "+(c.ville||"")+".\n\n"+
+    "Statut : "+(pv.avecReserves?"Reception AVEC reserves":"Reception SANS reserves")+"\n"+
+    (pv.avecReserves&&pv.reserveTexte?"Reserves : "+pv.reserveTexte+"\n\n":"\n")+
+    "Ce document a ete signe electroniquement dans l'application MMM Chantier.\n\n"+
+    "Cordialement,\nMARMONIER MENUISIER MODELEUR"
+  );
+  lienBtn.href="mailto:"+(c.email||"")+"?subject="+sujet+"&body="+corps;
+  if(!c.email){lienBtn.style.opacity="0.6";lienBtn.title="Aucun email client renseigne - completez-le dans la fiche";}
 }
 
 async function creerNotification(type,chantierId,chantierNom,message,target,refId){
@@ -1164,7 +1191,8 @@ g("btn-pv-valider").addEventListener("click",async function(){
     await updateDoc(doc(db,"chantiers",teamCurrentId),updateData);
     await creerNotification(avecReserves?"reserve_sav":"pv_signe",teamCurrentId,teamCurrentChantier.client||"","PV signe"+(avecReserves?" AVEC reserves":" sans reserves")+" - "+(teamCurrentChantier.client||"")+(avecReserves?" : "+reserveTexte:""),"admin");
     toast("PV enregistre","s");
-    show(currentUser&&currentUser.role==="atelier"?"p-atelier":"p-equipe");
+    await ouvrirVueTeam(teamCurrentId);
+    show("p-team-view");
   }catch(e){toast("Erreur: "+e.message,"e");}
   finally{btn.disabled=false;btn.textContent="Valider le PV";}
 });
@@ -1387,6 +1415,7 @@ g("f-pdf").addEventListener("change",async function(e){
     function get(regex){var m=txt.match(regex);return m?(m[1]||"").trim():"";}
     var client=get(/((?:Madame|Monsieur|M\.|Mme)\.?\s+[A-Z][^\n]{5,60})/i)||"";
     var tel=get(/Mobile\s*:\s*([\d\.\s]{8,15})/);
+    var email=get(/Mail\s*:\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/);
     var adresse=get(/(\d+\s+(?:CHEMIN|RUE|AVENUE|BOULEVARD|IMPASSE|ALLEE|PLACE|ROUTE|LOTISSEMENT|HAMEAU|QUAI|COURS|SQUARE)[^\n]{5,50})/i);
     var numDev=get(/DEVIS\s+N[°o]\s+([A-Z0-9]+)/i);
     // Extraction montants
@@ -1498,7 +1527,7 @@ g("f-pdf").addEventListener("change",async function(e){
         if(desig2.length>5&&mt2>0) importOuvrages.push({designation:libelle2,totalHT:mt2});
       }
     }
-    g("if-client").value=client;g("if-tel").value=tel;g("if-adresse").value=adresse;g("if-ville").value=cpVille||"";
+    g("if-client").value=client;g("if-tel").value=tel;g("if-email").value=email;g("if-adresse").value=adresse;g("if-ville").value=cpVille||"";
     g("if-march").value=sousTotal||"";g("if-pose").value=pose||"";g("if-divers").value=dech+livr||"";
     g("if-ht").value=totalHT||"";g("if-ttc").value=totalTTC||"";g("if-ac").value=acompte||"";
     g("if-info").textContent=importOuvrages.length+" ouvrage(s) - ref: "+(numDev||"?");
@@ -1511,7 +1540,7 @@ g("btn-val-import").addEventListener("click",function(){
   currentId=null;
   g("btn-delete").style.display="none";
   g("fiche-titre").textContent=g("if-client").value||"Nouveau chantier";
-  g("fc-client").value=g("if-client").value;g("fc-tel").value=g("if-tel").value;
+  g("fc-client").value=g("if-client").value;g("fc-tel").value=g("if-tel").value;g("fc-email").value=g("if-email").value;
   g("fc-adresse").value=g("if-adresse").value;g("fc-ville").value=g("if-ville").value;
   g("fc-march").value=g("if-march").value;g("fc-pose-ht").value=g("if-pose").value;g("fc-divers").value=g("if-divers").value;
   renderEq([]);
