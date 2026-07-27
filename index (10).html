@@ -1184,6 +1184,8 @@ g("f-pdf").addEventListener("change",async function(e){
     var pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
     var lignes=await extraireLignesPDF(pdf);
     var txt=lignes.join("\n");
+    console.log("=== DEBUG LIGNES EXTRAITES ===");
+    console.log(JSON.stringify(lignes.slice(0,45)));
     function getMt(regex){var m=txt.match(regex);if(!m)return 0;var s=(m[1]||m[2]||"").replace(/ /g,"").replace(",",".");return parseFloat(s)||0;}
     function get(regex){var m=txt.match(regex);return m?(m[1]||"").trim():"";}
     var client=get(/((?:Madame|Monsieur|M\.|Mme)\.?\s+[A-Z][^\n]{5,60})/i)||"";
