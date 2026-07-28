@@ -271,6 +271,10 @@ body{display:flex;align-items:center;justify-content:center}
       <a class="gps-btn" id="team-gps-link" href="#" target="_blank">📍 Itineraire</a>
     </div>
   </div>
+  <div id="team-presence-wrap" style="display:none">
+    <p class="sec">Qui est present aujourd'hui ?</p>
+    <div id="team-presence-list"></div>
+  </div>
   <div id="team-pointage-wrap" style="display:none">
     <p class="sec">Pointage chantier</p>
     <div class="card" id="team-pointage-info" style="cursor:default"></div>
@@ -463,7 +467,7 @@ g("btn-login").addEventListener("click", async function(){
 
 g("i-pin").addEventListener("keydown",function(e){if(e.key==="Enter")g("btn-login").click();});
 
-var teamUnsub=null, teamCurrentId=null, teamCurrentChantier=null, crPhoto1=null, crPhoto2=null, pvDrawing=false, pvHasSignature=false, pvCtx=null;
+var teamUnsub=null, teamCurrentId=null, teamCurrentChantier=null, crPhoto1=null, crPhoto2=null, pvDrawing=false, pvHasSignature=false, pvCtx=null, teamPresenceNoms=[];
 
 function deco(){if(unsub)unsub();if(teamUnsub){teamUnsub();teamUnsub=null;}signOut(auth);currentUser=null;localStorage.removeItem("mmm_user");g("i-login").value="";g("i-pin").value="";show("p-login");}
 g("btn-logout").addEventListener("click",deco);
@@ -842,10 +846,38 @@ async function ouvrirVueTeam(id){
     renderLivraisonsTeam(c.livraisons||[]);
     renderTachesTeam(c.taches||[]);
     renderComptesRendus(c.comptesRendus||[]);
+    renderPresence(c);
     renderPointage(c);
     renderPvStatut(c);
     show("p-team-view");
   }catch(e){toast("Erreur: "+e.message,"e");}
+}
+
+function nomEquipeActuel(){
+  if(teamPresenceNoms.length>0) return teamPresenceNoms.join(", ");
+  return currentUser?currentUser.prenom:"";
+}
+function renderPresence(c){
+  var wrap=g("team-presence-wrap"), el=g("team-presence-list");
+  var isEquipe=currentUser&&currentUser.role==="equipe";
+  var noms=c.equipe||[];
+  if(!isEquipe||noms.length===0){wrap.style.display="none";teamPresenceNoms=[];return;}
+  wrap.style.display="block";
+  teamPresenceNoms=[];
+  el.innerHTML="";
+  noms.forEach(function(nom){
+    var div=document.createElement("div");div.className="pr";
+    div.innerHTML='<div class="pav">'+nom.slice(0,2).toUpperCase()+'</div><span style="font-size:13px;font-weight:500;flex:1">'+nom+'</span><div class="pck">'+'</div>';
+    div.addEventListener("click",function(){
+      div.classList.toggle("sel");
+      var ck=div.querySelector(".pck");
+      ck.classList.toggle("ok");
+      ck.textContent=ck.classList.contains("ok")?"✓":"";
+      if(div.classList.contains("sel")){if(teamPresenceNoms.indexOf(nom)===-1)teamPresenceNoms.push(nom);}
+      else{teamPresenceNoms=teamPresenceNoms.filter(function(n){return n!==nom;});}
+    });
+    el.appendChild(div);
+  });
 }
 
 function renderPointage(c){
@@ -854,7 +886,8 @@ function renderPointage(c){
   if(!isEquipe){wrap.style.display="none";return;}
   wrap.style.display="block";
   var pointages=c.pointages||[];
-  var mine=pointages.filter(function(p){return p.equipe===currentUser.prenom;});
+  var monNom=nomEquipeActuel();
+  var mine=pointages.filter(function(p){return p.equipe===monNom;});
   var ouvert=mine.length?mine[mine.length-1]:null;
   var info=g("team-pointage-info");
   var btn=g("btn-pointage-toggle");
@@ -864,7 +897,7 @@ function renderPointage(c){
     btn.textContent="Pointer le depart";
     btn.onclick=async function(){
       var newP=pointages.slice();
-      for(var i=newP.length-1;i>=0;i--){if(newP[i].equipe===currentUser.prenom&&!newP[i].depart){newP[i]=Object.assign({},newP[i],{depart:new Date().toISOString()});break;}}
+      for(var i=newP.length-1;i>=0;i--){if(newP[i].equipe===monNom&&!newP[i].depart){newP[i]=Object.assign({},newP[i],{depart:new Date().toISOString()});break;}}
       try{await updateDoc(doc(db,"chantiers",teamCurrentId),{pointages:newP});c.pointages=newP;renderPointage(c);toast("Depart pointe","s");}
       catch(e){toast("Erreur: "+e.message,"e");}
     };
@@ -873,7 +906,7 @@ function renderPointage(c){
     info.innerHTML=dernier?'<div style="font-size:12px;color:var(--mu)">Dernier passage : '+new Date(dernier.arrivee).toLocaleDateString("fr-FR")+' ('+new Date(dernier.arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+' - '+(dernier.depart?new Date(dernier.depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"?")+')</div>':'<div style="font-size:12px;color:var(--mu)">Aucun passage enregistre</div>';
     btn.textContent="Pointer l'arrivee";
     btn.onclick=async function(){
-      var newP=pointages.concat([{equipe:currentUser.prenom,arrivee:new Date().toISOString(),depart:null}]);
+      var newP=pointages.concat([{equipe:monNom,arrivee:new Date().toISOString(),depart:null}]);
       try{await updateDoc(doc(db,"chantiers",teamCurrentId),{pointages:newP});c.pointages=newP;renderPointage(c);toast("Arrivee pointee","s");}
       catch(e){toast("Erreur: "+e.message,"e");}
     };
@@ -1096,12 +1129,12 @@ g("btn-cr-envoyer").addEventListener("click",async function(){
   });
   var probleme=g("cr-probleme").value.trim();
   var photos=[crPhoto1,crPhoto2].filter(Boolean);
-  var cr={id:"cr"+Date.now(),date:new Date().toISOString(),equipe:currentUser?currentUser.prenom:"",tachesFaites:tachesFaitesLibelles,photos:photos,probleme:probleme};
+  var cr={id:"cr"+Date.now(),date:new Date().toISOString(),equipe:nomEquipeActuel(),tachesFaites:tachesFaitesLibelles,photos:photos,probleme:probleme};
   var btn=g("btn-cr-envoyer");btn.disabled=true;btn.textContent="Envoi...";
   try{
     await updateDoc(doc(db,"chantiers",teamCurrentId),{comptesRendus:arrayUnion(cr),taches:newTaches});
     teamCurrentChantier.taches=newTaches;
-    await creerNotification("compte_rendu",teamCurrentId,teamCurrentChantier.client||"",(currentUser?currentUser.prenom:"")+" a envoye un compte-rendu"+(probleme?" (probleme signale)":"")+" - "+(teamCurrentChantier.client||""),"admin",cr.id);
+    await creerNotification("compte_rendu",teamCurrentId,teamCurrentChantier.client||"",nomEquipeActuel()+" a envoye un compte-rendu"+(probleme?" (probleme signale)":"")+" - "+(teamCurrentChantier.client||""),"admin",cr.id);
     toast("Compte-rendu envoye","s");
     ouvrirVueTeam(teamCurrentId);
     show("p-team-view");
@@ -1116,7 +1149,7 @@ g("btn-envoyer-manque").addEventListener("click",async function(){
   if(!txt){toast("Precisez ce qui manque","e");return;}
   var btn=g("btn-envoyer-manque");btn.disabled=true;
   try{
-    await creerNotification("manque_materiel",teamCurrentId,teamCurrentChantier.client||"",(currentUser?currentUser.prenom:"")+" signale un manque sur "+(teamCurrentChantier.client||"")+" : "+txt,"atelier");
+    await creerNotification("manque_materiel",teamCurrentId,teamCurrentChantier.client||"",nomEquipeActuel()+" signale un manque sur "+(teamCurrentChantier.client||"")+" : "+txt,"atelier");
     toast("Alerte envoyee a Nicolas","s");
     g("team-manque-txt").value="";
   }catch(e){toast("Erreur: "+e.message,"e");}
@@ -1173,7 +1206,7 @@ g("btn-pv-valider").addEventListener("click",async function(){
   var reserveTexte=g("pv-reserve-txt").value.trim();
   if(avecReserves&&!reserveTexte){toast("Precisez les reserves","e");return;}
   var btn=g("btn-pv-valider");btn.disabled=true;btn.textContent="Enregistrement...";
-  var pvReception={avecReserves:avecReserves,reserveTexte:reserveTexte,signatureDataURL:g("pv-canvas").toDataURL("image/png"),signePar:currentUser?currentUser.prenom:"",signeLe:new Date().toISOString()};
+  var pvReception={avecReserves:avecReserves,reserveTexte:reserveTexte,signatureDataURL:g("pv-canvas").toDataURL("image/png"),signePar:nomEquipeActuel(),signeLe:new Date().toISOString()};
   try{
     try{
       var cfgSnap=await getDoc(doc(db,"config","entreprise"));
