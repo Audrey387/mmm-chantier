@@ -274,6 +274,7 @@ body{display:flex;align-items:center;justify-content:center}
   <div id="team-presence-wrap" style="display:none">
     <p class="sec">Qui est present aujourd'hui ?</p>
     <div id="team-presence-list"></div>
+    <button class="bts" id="btn-add-presence" style="margin-top:0;margin-bottom:10px">+ Ajouter quelqu'un</button>
   </div>
   <div id="team-pointage-wrap" style="display:none">
     <p class="sec">Pointage chantier</p>
@@ -857,28 +858,35 @@ function nomEquipeActuel(){
   if(teamPresenceNoms.length>0) return teamPresenceNoms.join(", ");
   return currentUser?currentUser.prenom:"";
 }
+function ajouterPersonnePresence(nom,selectionne){
+  var el=g("team-presence-list");
+  var div=document.createElement("div");div.className="pr"+(selectionne?" sel":"");
+  div.innerHTML='<div class="pav">'+nom.slice(0,2).toUpperCase()+'</div><span style="font-size:13px;font-weight:500;flex:1">'+nom+'</span><div class="pck'+(selectionne?" ok":"")+'">'+(selectionne?"✓":"")+'</div>';
+  div.addEventListener("click",function(){
+    div.classList.toggle("sel");
+    var ck=div.querySelector(".pck");
+    ck.classList.toggle("ok");
+    ck.textContent=ck.classList.contains("ok")?"✓":"";
+    if(div.classList.contains("sel")){if(teamPresenceNoms.indexOf(nom)===-1)teamPresenceNoms.push(nom);}
+    else{teamPresenceNoms=teamPresenceNoms.filter(function(n){return n!==nom;});}
+  });
+  el.appendChild(div);
+  if(selectionne&&teamPresenceNoms.indexOf(nom)===-1)teamPresenceNoms.push(nom);
+}
 function renderPresence(c){
   var wrap=g("team-presence-wrap"), el=g("team-presence-list");
   var isEquipe=currentUser&&currentUser.role==="equipe";
-  var noms=c.equipe||[];
-  if(!isEquipe||noms.length===0){wrap.style.display="none";teamPresenceNoms=[];return;}
+  if(!isEquipe){wrap.style.display="none";teamPresenceNoms=[];return;}
   wrap.style.display="block";
   teamPresenceNoms=[];
   el.innerHTML="";
-  noms.forEach(function(nom){
-    var div=document.createElement("div");div.className="pr";
-    div.innerHTML='<div class="pav">'+nom.slice(0,2).toUpperCase()+'</div><span style="font-size:13px;font-weight:500;flex:1">'+nom+'</span><div class="pck">'+'</div>';
-    div.addEventListener("click",function(){
-      div.classList.toggle("sel");
-      var ck=div.querySelector(".pck");
-      ck.classList.toggle("ok");
-      ck.textContent=ck.classList.contains("ok")?"✓":"";
-      if(div.classList.contains("sel")){if(teamPresenceNoms.indexOf(nom)===-1)teamPresenceNoms.push(nom);}
-      else{teamPresenceNoms=teamPresenceNoms.filter(function(n){return n!==nom;});}
-    });
-    el.appendChild(div);
-  });
+  (c.equipe||[]).forEach(function(nom){ajouterPersonnePresence(nom,false);});
 }
+g("btn-add-presence").addEventListener("click",function(){
+  var nom=prompt("Prenom de la personne presente :");
+  if(!nom||!nom.trim())return;
+  ajouterPersonnePresence(nom.trim(),true);
+});
 
 function renderPointage(c){
   var wrap=g("team-pointage-wrap");
